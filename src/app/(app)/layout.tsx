@@ -15,6 +15,10 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   }, [status, router]);
   const businessId = status === "ready" ? business?.id : undefined;
   useEffect(() => (businessId ? startBackgroundSync(businessId) : undefined), [businessId]);
+  useEffect(() => {
+    // Ask the browser not to evict this site's storage under disk pressure (it holds un-uploaded bills).
+    if (businessId) void navigator.storage?.persist?.().catch(() => undefined);
+  }, [businessId]);
 
   if (status === "error") {
     return (
