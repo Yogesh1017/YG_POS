@@ -305,7 +305,7 @@ describe.skipIf(!reachable)("database", () => {
         const interstate = rnd(4) === 0;
         const n = 1 + rnd(6);
         const lines: LineInput[] = [];
-        const items = [];
+        const items: Record<string, unknown>[] = [];
         for (let j = 0; j < n; j++) {
           const qtyMilli = rnd(3) === 0 ? 1 + rnd(9999) : (1 + rnd(12)) * 1000;
           const unitPricePaise = 1 + rnd(250000);
