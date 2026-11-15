@@ -162,7 +162,7 @@ describe("reports", () => {
     expect(r).toMatchObject({ wastage: R(70), expenses: R(500), net_profit: R(770 - 70 - 500), customer_dues: R(5098 - 3000 - 1274.4), supplier_dues: R(9912) });
     expect(r.by_method).toEqual([{ method: "cash", received: R(3000), refunded: 0 }, { method: "upi", received: R(224), refunded: 0 }]);
 
-    expect(shop.ok<any[]>(shop.owner, "reports.products", { from: TODAY, to: TODAY })[0]).toMatchObject({ name: "Vanilla Cup", sold_base_m: 500000, returned_base_m: 120000 });
+    expect(shop.ok<any[]>(shop.owner, "reports.products", { from: TODAY, to: TODAY })[0]).toMatchObject({ name: "Vanilla Cup 100 ml", sold_base_m: 500000, returned_base_m: 120000 });
     expect(shop.ok<any[]>(shop.owner, "reports.customers", { from: TODAY, to: TODAY }).map((x) => x.name)).toEqual(["Sharma Kirana", "Cash sales"]);
     const out = shop.ok<any>(shop.owner, "reports.outstanding");
     expect(out.customers[0]).toMatchObject({ name: "Sharma Kirana", unpaid_invoices: 1 });

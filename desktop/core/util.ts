@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isValidGstin } from "../../src/lib/gst";
 
 /** An error whose message is meant for the person using the app. */
 export class AppError extends Error {
@@ -36,7 +37,8 @@ export const zRef = z.string().min(8).max(64);
 export const GSTIN_RE = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/;
 export const zGstin = z.string().trim().toUpperCase().nullish()
   .transform((v) => (v ? v : null))
-  .refine((v) => v === null || GSTIN_RE.test(v), "This GSTIN is not valid");
+  .refine((v) => v === null || isValidGstin(v), "This GSTIN is not valid — check each character");
 export const zState = z.string().regex(/^\d{2}$/).nullish().transform((v) => (v ? v : null));
 /** Boolean with a default, stored as 0/1. */
 export const zBoolD = (def: boolean) => zFlag.default(def).transform((b) => (b ? 1 : 0));
+export { isValidGstin };

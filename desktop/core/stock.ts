@@ -15,6 +15,12 @@ export function getProduct(ctx: Ctx, id: number): ProductRow {
   if (!p) throw new AppError("Product not found.", "not_found");
   return p;
 }
+/** The product's full name as printed on documents: brand, name and pack size. */
+export function printName(ctx: Ctx, productId: number): string {
+  const r = ctx.db.get<{ name: string; pack_size: string | null; brand: string | null }>(
+    "select p.name, p.pack_size, b.name as brand from products p left join brands b on b.id = p.brand_id where p.id = ?", productId)!;
+  return [r.brand, r.name, r.pack_size].filter(Boolean).join(" ");
+}
 export function assertWhole(p: ProductRow, qtyM: number): void {
   if (p.qty_decimals === 0 && qtyM % 1000 !== 0) throw new AppError(`${p.name} is counted in whole ${p.base_unit}; a fraction is not allowed.`);
 }

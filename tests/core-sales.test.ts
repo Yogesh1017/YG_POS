@@ -46,8 +46,10 @@ describe("first-run setup, sign-in and roles", () => {
   it("GST settings need a GSTIN that matches the state", () => {
     const shop = newShop();
     const base = { business_name: "X", gst_registered: true, state_code: "27" };
-    expect(shop.fail(shop.owner, "settings.update", { ...base, gstin: "29AAPFU0939F1ZV" }).message).toMatch(/must match the state/);
+    expect(shop.fail(shop.owner, "settings.update", { ...base, gstin: "29AAPFU0939F1ZR" }).message).toMatch(/must match the state/);
     expect(shop.fail(shop.owner, "settings.update", { ...base, gstin: "BAD" }).message).toMatch(/valid 15-character GSTIN/);
+    expect(shop.fail(shop.owner, "settings.update", { ...base, gstin: "27AAPFU0939F1ZA" }).message).toMatch(/valid 15-character GSTIN/);   // wrong check digit
+    expect(shop.fail(shop.owner, "customers.save", { name: "X", gstin: "27AAPFU0939F1ZA" }).message).toMatch(/GSTIN is not valid/);
     expect(shop.ok<any>(shop.owner, "settings.update", { business_name: "No GST Shop", gst_registered: false }).gst_registered).toBe(0);
   });
 });

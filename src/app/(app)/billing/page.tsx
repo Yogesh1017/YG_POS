@@ -34,7 +34,8 @@ export default function BillingPage() {
   const searchRef = useRef<HTMLInputElement>(null);
   const customerRef = useRef<HTMLInputElement>(null);
   const qtyRefs = useRef(new Map<string, HTMLInputElement>());
-  const focusQty = useRef<string | null>(null);
+  /** Where the cursor should go after the next render: "customer", "search", or a line's key (its quantity box). */
+  const focusNext = useRef<string | null>(null);
 
   // The invoice being written survives a refresh or the app being closed by mistake.
   useEffect(() => {
@@ -106,15 +107,17 @@ export default function BillingPage() {
     const existing = draft.rows.find((r) => r.productId === p.id && r.unitId === unit.id);
     const key = existing?.key ?? newRef();
     if (!existing) setDraft((d) => ({ ...d, rows: [...d.rows, { key, productId: p.id, unitId: unit.id, qty: "1", rate: null, disc: "" }] }));
-    focusQty.current = key;
+    focusNext.current = key;
   };
+  // Focus moves right after the screen has updated — never on a timer, so a fast typist cannot outrun it.
   useEffect(() => {
-    if (!focusQty.current) return;
-    const el = qtyRefs.current.get(focusQty.current);
-    if (el) { el.focus(); el.select(); focusQty.current = null; }
+    const want = focusNext.current;
+    if (!want || document.querySelector("dialog[open]")) return;
+    const el = want === "customer" ? customerRef.current : want === "search" ? searchRef.current : qtyRefs.current.get(want);
+    if (el) { el.focus(); el.select(); focusNext.current = null; }
   });
 
-  const reset = () => { setDraft(emptyDraft()); setApproval(null); window.setTimeout(() => customerRef.current?.focus(), 50); };
+  const reset = () => { focusNext.current = "customer"; setDraft(emptyDraft()); setApproval(null); };
 
   const save = async (approved: string[] = [], approver?: { username: string; password: string }) => {
     if (saving) return;
@@ -176,12 +179,12 @@ export default function BillingPage() {
           {customer ? (
             <div className="flex h-10 items-center justify-between gap-2 rounded-md border border-border bg-surface-2 px-3 text-sm">
               <span className="min-w-0 truncate"><span className="font-semibold">{customer.name}</span>{customer.phone && <span className="num text-muted"> · {customer.phone}</span>}</span>
-              <button aria-label="Change customer" title="Change customer (F3)" onClick={() => { patch({ customerId: null, payTouched: false }); window.setTimeout(() => customerRef.current?.focus(), 30); }} className="rounded p-1 text-muted hover:bg-surface"><X className="size-4" /></button>
+              <button aria-label="Change customer" title="Change customer (F3)" onClick={() => { focusNext.current = "customer"; patch({ customerId: null, payTouched: false }); }} className="rounded p-1 text-muted hover:bg-surface"><X className="size-4" /></button>
             </div>
           ) : (
             <Combo items={activeCustomers} keyOf={(c) => c.id} inputRef={customerRef} autoFocus label="Select customer" placeholder="Customer — type shop name or phone  (F3)"
               text={(c) => [c.name, c.contact_person, c.phone, c.city].filter(Boolean).join(" ")}
-              onPick={(c) => { patch({ customerId: c.id, payTouched: false }); window.setTimeout(() => searchRef.current?.focus(), 30); }}
+              onPick={(c) => { focusNext.current = "search"; patch({ customerId: c.id, payTouched: false }); }}
               render={(c) => <span className="flex justify-between gap-3"><span><span className="font-medium">{c.name}</span>{c.city && <span className="text-muted"> · {c.city}</span>}</span>{c.balance > 0 && <span className="num text-xs text-warn">owes {formatINR(c.balance)}</span>}</span>}
               footer={(q, close) => <Button size="sm" variant="ghost" onClick={() => { close(); setAddingCustomer(q); }}><UserPlus className="size-4" /> New customer{q ? ` “${q}”` : ""}</Button>} />
           )}
@@ -330,7 +333,7 @@ export default function BillingPage() {
           </div>
         </Dialog>
       )}
-      {addingCustomer !== null && <QuickCustomer initial={addingCustomer} onClose={() => setAddingCustomer(null)} onSaved={async (c) => { await customers.reload(); patch({ customerId: c.id, payTouched: false }); setAddingCustomer(null); window.setTimeout(() => searchRef.current?.focus(), 50); }} />}
+      {addingCustomer !== null && <QuickCustomer initial={addingCustomer} onClose={() => setAddingCustomer(null)} onSaved={async (c) => { await customers.reload(); focusNext.current = "search"; patch({ customerId: c.id, payTouched: false }); setAddingCustomer(null); }} />}
     </div>
   );
 }

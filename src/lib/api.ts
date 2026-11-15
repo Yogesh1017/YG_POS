@@ -42,23 +42,26 @@ export const errorText = (e: unknown): string => (e instanceof Error ? e.message
 
 /** Load data with loading / error / reload state. Re-runs when args change. Stale answers are ignored. */
 export function useApi<T>(method: string | null, args: unknown = {}) {
-  const [state, setState] = useState<{ data: T | null; error: string | null; loading: boolean }>({ data: null, error: null, loading: !!method });
-  const seq = useRef(0);
   const key = JSON.stringify([method, args]);
+  const [state, setState] = useState<{ key: string; data: T | null; error: string | null; loading: boolean }>({ key, data: null, error: null, loading: !!method });
+  const seq = useRef(0);
   const reload = useCallback(async () => {
     const [m, a] = JSON.parse(key) as [string | null, unknown];
     if (!m) return;
     const mine = ++seq.current;
-    setState((s) => ({ ...s, loading: true, error: null }));
+    // Reloading the same thing keeps what is on screen; asking for something different clears it,
+    // so one report's data is never shown under another report's heading.
+    setState((s) => ({ key, data: s.key === key ? s.data : null, loading: true, error: null }));
     try {
       const data = await api<T>(m, a);
-      if (mine === seq.current) setState({ data, error: null, loading: false });
+      if (mine === seq.current) setState({ key, data, error: null, loading: false });
     } catch (e) {
-      if (mine === seq.current) setState({ data: null, error: errorText(e), loading: false });
+      if (mine === seq.current) setState({ key, data: null, error: errorText(e), loading: false });
     }
   }, [key]);
   useEffect(() => { void reload(); }, [reload]);
-  return { ...state, reload };
+  const current = state.key === key;
+  return { data: current ? state.data : null, error: current ? state.error : null, loading: current ? state.loading : !!method, reload };
 }
 
 export const newRef = (): string => crypto.randomUUID();

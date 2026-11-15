@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { z } from "zod";
 import { ANYONE, OWNER, audit, define, hashPassword, verifyPassword, zPassword, type User } from "./core";
-import { AppError, GSTIN_RE, zBool, zBoolD, zId, zOptText, zState, zText } from "./util";
+import { AppError, isValidGstin, zBool, zBoolD, zId, zOptText, zState, zText } from "./util";
 
 const zUsername = z.string().trim().min(3, "Use at least 3 characters").max(30).regex(/^[a-zA-Z0-9._-]+$/, "Letters, digits, dot, dash and underscore only");
 const zRole = z.enum(["manager", "cashier"]);
@@ -21,7 +21,7 @@ export const zBusiness = z.object({
 }).superRefine((v, ctx) => {
   if (!v.gst_registered) return;
   if (!v.state_code) ctx.addIssue({ code: "custom", path: ["state_code"], message: "Select your state" });
-  if (!v.gstin || !GSTIN_RE.test(v.gstin)) ctx.addIssue({ code: "custom", path: ["gstin"], message: "Enter a valid 15-character GSTIN" });
+  if (!v.gstin || !isValidGstin(v.gstin)) ctx.addIssue({ code: "custom", path: ["gstin"], message: "Enter a valid 15-character GSTIN — check each character" });
   else if (v.state_code && v.gstin.slice(0, 2) !== v.state_code) ctx.addIssue({ code: "custom", path: ["gstin"], message: "The first two digits of the GSTIN must match the state" });
 });
 

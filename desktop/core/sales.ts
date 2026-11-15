@@ -3,7 +3,7 @@ import { resolvePrice } from "../../src/lib/pricing";
 import { computeSale, distributeDiscount, lineGross, type LineInput } from "../../src/lib/tax";
 import { toBaseM } from "../../src/lib/units";
 import { ANYONE, MANAGERS, audit, authoriser, define, zApprover, type Ctx } from "./core";
-import { costOf, getProduct, sellableM, stockBack, stockOut, type Allocation, type ProductRow } from "./stock";
+import { costOf, getProduct, printName, sellableM, stockBack, stockOut, type Allocation, type ProductRow } from "./stock";
 import { AppError, divRound, fyOf, zDate, zId, zMethod, zMoney, zOptText, zQtyM, zRef } from "./util";
 
 interface Settings { gst_registered: number; state_code: string | null; round_off_total: number; invoice_prefix: string }
@@ -137,7 +137,7 @@ define("sales.create", ANYONE, zSale, (ctx, a) => {
     const itemId = ctx.db.run(`insert into sale_items (sale_id, line_no, product_id, unit_id, name, unit_name, factor_m, hsn_code, qty_m, base_qty_m, unit_price, list_price,
         price_source, price_includes_tax, gross, discount, tax_rate_bp, taxable, cgst, sgst, igst, line_total)
       values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      saleId, i + 1, l.product.id, l.unit.id, l.product.name, l.unit.name, l.unit.factor_m, l.product.hsn_code, l.it.qty_m, l.baseQtyM, l.it.unit_price, l.listPrice,
+      saleId, i + 1, l.product.id, l.unit.id, printName(ctx, l.product.id), l.unit.name, l.unit.factor_m, l.product.hsn_code, l.it.qty_m, l.baseQtyM, l.it.unit_price, l.listPrice,
       l.source, l.product.price_includes_tax, t.gross, t.discount, inputs[i].taxRateBp, t.taxable, t.cgst, t.sgst, t.igst, t.total).id;
     const allocations = stockOut(ctx, { product: l.product, qty_m: l.baseQtyM, reason: "sale", ref: { type: "sale", id: saleId }, mode: "sale", allow_shortfall: true });
     let lineCost = 0;

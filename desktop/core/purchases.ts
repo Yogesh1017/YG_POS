@@ -2,7 +2,7 @@ import { z } from "zod";
 import { computeLine } from "../../src/lib/tax";
 import { toBaseM } from "../../src/lib/units";
 import { MANAGERS, audit, define, type Ctx } from "./core";
-import { getProduct, stockIn } from "./stock";
+import { getProduct, printName, stockIn } from "./stock";
 import { AppError, divRound, zBoolD, zDate, zId, zMethod, zMoney, zOptText, zQtyM, zRef } from "./util";
 
 export function loadPurchase(ctx: Ctx, id: number) {
@@ -73,7 +73,7 @@ define("purchases.create", MANAGERS, z.object({
       batch_no: l.it.batch_no, mfg_date: l.it.mfg_date, expiry_date: l.it.expiry_date, purchase_id: id });
     ctx.db.run(`insert into purchase_items (purchase_id, line_no, product_id, unit_id, name, unit_name, factor_m, qty_m, base_qty_m, rate, discount, tax_rate_bp, taxable, tax, line_total, batch_id)
                 values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      id, i + 1, l.product.id, l.unit.id, l.product.name, l.unit.name, l.unit.factor_m, l.it.qty_m, l.baseQtyM, l.it.rate, l.amounts.discount, l.taxRateBp, l.amounts.taxable, l.amounts.tax, l.amounts.total, batchId);
+      id, i + 1, l.product.id, l.unit.id, printName(ctx, l.product.id), l.unit.name, l.unit.factor_m, l.it.qty_m, l.baseQtyM, l.it.rate, l.amounts.discount, l.taxRateBp, l.amounts.taxable, l.amounts.tax, l.amounts.total, batchId);
     ctx.db.run("update products set cost4 = ? where id = ?", l.cost4, l.product.id);
   });
   if (a.paid) {
