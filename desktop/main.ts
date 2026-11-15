@@ -8,6 +8,7 @@ import { backupNow, createCore, type Core } from "./core";
 import { createHandler } from "./server";
 
 const ORIGIN = "app://ygpos";
+const WINDOW_TINT = "#f4f2ec";
 protocol.registerSchemesAsPrivileged([{ scheme: "app", privileges: { standard: true, secure: true, supportFetchAPI: true } }]);
 
 let core: Core | null = null;
@@ -33,9 +34,13 @@ function registerIpc(): void {
   ipcMain.handle("desktop:print", (_e, opts: { paper: Paper; printer?: string; silent?: boolean }) =>
     new Promise<{ ok: boolean; error?: string }>((resolve) => {
       if (!win) return resolve({ ok: false, error: "no window" });
+      win.setBackgroundColor("#ffffff"); // paper is white; the window tint must not print in the margins
       win.webContents.print(
         { silent: !!opts.silent && !!opts.printer, deviceName: opts.printer || undefined, printBackground: true, pageSize: pageSize(opts.paper), margins: { marginType: opts.paper === "a4" ? "default" : "none" } },
-        (success, reason) => resolve(success ? { ok: true } : { ok: false, error: reason || "cancelled" }),
+        (success, reason) => {
+          win?.setBackgroundColor(WINDOW_TINT);
+          resolve(success ? { ok: true } : { ok: false, error: reason || "cancelled" });
+        },
       );
     }));
   ipcMain.handle("desktop:savePdf", async (_e, opts: { paper: Paper; filename: string }) => {
@@ -45,11 +50,14 @@ function registerIpc(): void {
       : await dialog.showSaveDialog(win, { defaultPath: path.join(app.getPath("documents"), path.basename(opts.filename)), filters: [{ name: "PDF", extensions: ["pdf"] }] });
     if (target.canceled || !target.filePath) return { ok: false };
     try {
+      win.setBackgroundColor("#ffffff");
       const pdf = await win.webContents.printToPDF({ pageSize: pageSize(opts.paper), printBackground: true, preferCSSPageSize: true });
       writeFileSync(target.filePath, pdf);
       return { ok: true, file: target.filePath };
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    } finally {
+      win?.setBackgroundColor(WINDOW_TINT);
     }
   });
   ipcMain.handle("desktop:printers", async () => (win ? (await win.webContents.getPrintersAsync()).map((p) => ({ name: p.name, label: p.displayName || p.name })) : []));
@@ -67,7 +75,7 @@ function registerIpc(): void {
 
 function createWindow(): void {
   win = new BrowserWindow({
-    width: 1366, height: 800, minWidth: 1024, minHeight: 640, show: false, title: "YG POS", backgroundColor: "#f4f2ec",
+    width: 1366, height: 800, minWidth: 1024, minHeight: 640, show: false, title: "YG POS", backgroundColor: WINDOW_TINT,
     webPreferences: { preload: path.join(__dirname, "preload.js"), contextIsolation: true, nodeIntegration: false, sandbox: true },
   });
   // The window only ever shows the app itself.

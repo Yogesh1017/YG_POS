@@ -51,7 +51,7 @@ export default function BillingPage() {
 
   const customer = customers.data?.find((c) => c.id === draft.customerId) ?? null;
   const special = useApi<{ unit_id: number; price: number }[]>(customer ? "customers.prices" : null, { customer_id: customer?.id });
-  const recent = useApi<{ last_prices: { unit_id: number; unit_price: number; sold_on: string }[] }>(customer ? "customers.recent" : null, { customer_id: customer?.id });
+  const recent = useApi<{ last_prices: { unit_id: number; unit_price: number; sold_on: string }[]; sales: { id: number; invoice_no: string; sold_on: string; grand_total: number }[] }>(customer ? "customers.recent" : null, { customer_id: customer?.id });
   const specialByUnit = useMemo(() => new Map((customer ? special.data ?? [] : []).map((s) => [s.unit_id, s.price])), [special.data, customer]);
   const lastByUnit = useMemo(() => new Map((customer ? recent.data?.last_prices ?? [] : []).map((s) => [s.unit_id, s])), [recent.data, customer]);
   const productById = useMemo(() => new Map((products.data ?? []).map((p) => [p.id, p])), [products.data]);
@@ -194,6 +194,7 @@ export default function BillingPage() {
                 Balance <b className={customer.balance > 0 ? "text-warn" : "text-text"}>{formatINR(customer.balance)}</b>
                 {customer.credit_limit !== null && <> · limit {formatINR(customer.credit_limit)}</>}
                 {customer.gstin && <> · GSTIN {customer.gstin}</>}{interstate && <> · <b className="text-text">IGST (other state)</b></>}
+                {recent.data?.sales[0] && <> · last bill {recent.data.sales[0].invoice_no}, {formatDate(recent.data.sales[0].sold_on)}, {formatINR(recent.data.sales[0].grand_total)}</>}
               </span>
             ) : (
               <label className="flex items-center gap-2">Cash sale — name on bill (optional)

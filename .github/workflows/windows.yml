@@ -1,0 +1,44 @@
+# Tests the app on Windows and builds the installer. Download the installer from the run's
+# "Artifacts" section (Actions tab -> latest "Windows build" run -> YG-POS-Windows-Installer).
+name: Windows build
+
+on:
+  push:
+    branches: [main, "claude/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - name: Unit and database tests
+        run: npm test
+      - name: Build interface and desktop shell
+        run: npm run build
+      - name: Install test browser
+        run: |
+          npm install --no-save playwright
+          npx playwright install chromium
+      - name: End-to-end test (browser + local database)
+        run: npm run test:e2e
+      - name: Desktop shell test (Electron on Windows)
+        run: npm run test:desktop
+      - name: Build Windows installer
+        run: npx electron-builder --win nsis --x64 --publish never
+      - uses: actions/upload-artifact@v4
+        with:
+          name: YG-POS-Windows-Installer
+          path: release/*.exe
+          if-no-files-found: error

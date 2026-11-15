@@ -1,111 +1,133 @@
 # YG POS
 
-Billing, stock and sales software for a single Indian retail shop. It runs in the browser on the
-counter PC, a tablet or a phone, keeps billing working when the internet drops, and stores the
-shop's data in your own Supabase (PostgreSQL) project.
+Wholesale billing, stock and accounts for an ice cream distribution business, as an offline
+Windows desktop application. Everything runs on one computer. All data is kept in a local SQLite
+database file on that computer. No internet, cloud service, network or account is needed for
+any part of normal use.
 
-**Status: version 0.1 — built and tested locally, not yet deployed.** Everything listed under
-"What works" below has automated tests behind it, but those tests ran against a local PostgreSQL
-database and a test stand-in for the Supabase API. It has not yet been run against a real Supabase
-project or used in a shop. Do a trial day alongside your current billing method before relying on it.
-See [Before you rely on it](#before-you-rely-on-it).
+**Status: version 1.0.0.** The business logic, the interface and the desktop shell are covered by
+automated tests (see [Testing](#testing)), which pass on Linux. Before relying on it, read
+[What has and has not been verified](#what-has-and-has-not-been-verified): the app has not yet been
+run on your Windows PC or with your printers.
 
-## What works
+## What it does
 
-| Area | What you can do |
+| Area | Details |
 | --- | --- |
-| Billing | Search or scan items, edit quantity/price, line and bill discounts (₹ or %), cash/UPI/card/split payments, change calculation, credit (due) sales to saved customers, keyboard shortcuts (F2 search, F9 pay) |
-| GST | Optional. GSTIN and state, per-product rate and HSN/SAC, tax-inclusive or exclusive prices, CGST+SGST or IGST by place of supply, tax invoice numbering per financial year (`INV/26-27/1`) |
-| Bills | 58 mm / 80 mm thermal and A4 layouts through the browser print dialog; reprint any bill |
-| Offline | The app and product list are stored on the device. Bills made offline are saved on the device and upload by themselves, exactly once, when the connection returns |
-| Sales history | Filter by date, search by invoice/customer, cancel a bill (owner/manager, reason required), partial returns with credit note numbers |
-| Products | Add/edit/delete, categories, SKU, barcode, cost price, units, active/inactive |
-| Stock | Automatic deduction on sale, restock on cancel/return, receive stock, damaged/expired, count correction, low-stock list, movement history, stock value |
-| Customers | Saved customers, dues, collect payments (oldest bill first), purchase history |
-| Reports | Today dashboard; any date range: billed amount, revenue, gross profit, GST by rate and HSN, payments by method, best sellers; CSV export |
-| Staff | Owner, manager and cashier roles enforced by the database |
+| Invoices | Keyboard-first wholesale billing: customer, product search, unit, quantity, rate, discount. Final invoice number at once (`INV/26-27/1`). A4 tax invoice, thermal receipt, PDF file |
+| Packing units | Each product has one smallest unit (piece, cup, kg…). Boxes, cartons and cases are conversions of it, set per product. Selling 2 cartons of 12 boxes × 10 pieces takes 240 pieces from stock |
+| Pricing | A rate per unit, quantity prices ("5 cartons or more"), special rates per customer, and hand-typed rates that need an owner or manager |
+| Customers | Credit sales, part payments, credit limits, opening balances, ledger with running balance, printable statement |
+| Stock | Batches with expiry dates, earliest-expiry-first selling, expired stock blocked from sale, write-offs for damaged / melted / expired, stock counts, movement history |
+| Purchases | Supplier bills add stock with batch, expiry and real cost; supplier balances, payments and ledger |
+| Returns | Cancel an invoice, or return part of it (even part of a carton) against a credit note; returned goods go back to stock or to wastage |
+| GST | Optional. GSTIN, CGST/SGST or IGST by customer state, a rate and HSN per product, rates before or including GST |
+| Reports | Sales and profit (revenue, gross profit, wastage, expenses, net profit), by product, by customer, purchases, wastage, outstanding, stock value, GST summary, invoice register. CSV export |
+| Users | Owner, manager, cashier — enforced inside the app's core, with an audit log |
+| Safety | Automatic verified backups in two locations, restore with a safety copy, crash-safe database |
 
-Not built yet (see [PROJECT_PLAN.md](PROJECT_PLAN.md)): suppliers and purchase orders, expenses and
-net profit, multiple outlets, product variants and images, loyalty points. Online payment gateways
-are intentionally out of scope: UPI and card payments are *recorded*, not processed.
+Not included: payment gateways or any online payment (payment methods are recorded only),
+e-invoicing and e-way bills, the GST composition scheme, purchase returns to suppliers, product
+import from Excel, freezer-wise stock, free-goods schemes (enter a line at rate 0 instead), and
+advance payments from customers. The older web version is kept, unused, in `archive/`.
 
-## Set up
+## Install on the billing computer
 
-You need Node.js 20 or newer and a free [Supabase](https://supabase.com) account.
+1. On GitHub, open the repository's **Actions** tab, then the latest successful **Windows build** run.
+2. Under **Artifacts**, download **YG-POS-Windows-Installer** and unzip it.
+3. Run `YG-POS-Setup-1.0.0.exe`. Windows will warn that the publisher is unknown, because the
+   installer is not code-signed: choose **More info → Run anyway**.
+4. Open **YG POS** from the desktop shortcut.
 
-### 1. Create the database
+Requirements: Windows 10 or 11, 64-bit.
 
-1. Create a new Supabase project (choose the Mumbai region for a shop in India).
-2. Open **SQL Editor** and run the three files in `supabase/migrations/` **in filename order**,
-   one at a time. (Or with the Supabase CLI: `supabase link --project-ref <ref>` then `supabase db push`.)
-3. In **Authentication → URL Configuration**, set *Site URL* to where the app will be hosted
-   (for example `https://your-app.vercel.app`) and add `http://localhost:3000/**` under *Redirect URLs* for local use.
-4. Keep *Confirm email* turned on under **Authentication → Sign In / Providers → Email**.
+### First run
 
-### 2. Configure and run
+1. Create the owner login and enter the business details. Tick GST only if you have a GSTIN.
+2. **Write down the recovery key** that is shown. It is the only way to reset a forgotten owner password.
+3. **Settings → Backup and restore:** choose a second backup location on a USB or external drive.
+   The app keeps warning until this is done.
+4. **Settings → Printing:** choose the A4 and thermal printers (install them in Windows first).
+5. **Settings → Users:** add logins for staff.
+6. **Products:** add brands, then each product with its packing and rates. Enter stock in hand as
+   opening stock, or enter supplier bills under **Purchases**.
+7. **Customers / Suppliers:** add them, with any balance already outstanding as the opening balance.
 
-```bash
-cp .env.example .env.local
-```
+### Everyday keys
 
-Fill in `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` from **Project Settings → API**.
-Only ever use the **anon / publishable** key. The `service_role` key must never be put in this app.
+| Key | Does |
+| --- | --- |
+| F1 | New invoice, from anywhere |
+| F3 | Customer box |
+| F2 | Product search (also accepts a barcode scan) |
+| Enter | Pick the highlighted product; then in the quantity box, go back to product search |
+| Tab | Move across quantity, rate and discount |
+| F9 or Ctrl+Enter | Save the invoice |
+
+## Where the data is
+
+- Database: `%APPDATA%\YG POS\data\ygpos.db` (Help → Open data folder).
+- Backups: the `backups` folder beside it, plus the second location you chose.
+- Uninstalling the app does not delete this folder.
+
+Backups are taken when the app opens, every two hours while open, and when it closes. Each backup
+is reopened and checked after it is written. See [ARCHITECTURE.md](ARCHITECTURE.md#backup-and-recovery)
+for the recovery steps, including moving to a new computer.
+
+## What has and has not been verified
+
+Verified by automated tests on Linux (all passing):
+
+- 60 unit and database tests of the core: unit conversion, pricing, GST, invoice numbering, credit,
+  ledgers, stock and batches, purchases, returns, reports, backup and restore.
+- A 19-step browser test of the whole workflow against a real database, including a hard kill of
+  the app mid-use and a restore from backup.
+- A 5-step test of the real desktop shell: start-up, PDF export, single-instance lock, backup on
+  close, data kept across restarts.
+
+The same tests and the installer build run on a Windows machine at GitHub on every push; check the
+**Actions** tab for the result of the latest run.
+
+Not verified by me, and needing a check on your side:
+
+1. **Your Windows PC.** Install it and go through one day's work on trial data.
+2. **Your printers.** A4 and thermal layouts were checked on screen and as PDF, never on paper.
+   Thermal output depends on the printer driver's paper settings.
+3. **GST treatment.** The arithmetic is tested, but this software has not been reviewed or
+   certified for GST compliance. Have your accountant check a printed invoice, the GST rate set on
+   each product, and the GST report.
+4. **A restore drill on the real machine.** After a few days of use, press *Check* on a backup in
+   Settings and confirm the last invoice number and customer dues match.
+
+## For developers
 
 ```bash
 npm install
 ```
 
 ```bash
-npm run dev
-```
-
-Open http://localhost:3000, create your account, confirm the email, and fill in the shop details.
-
-Offline support (the service worker) is only active in a production build:
-
-```bash
 npm run build
 ```
 
 ```bash
-npm run preview
+npm start
 ```
 
-### 3. Deploy (Vercel)
+`npm start` opens the desktop app. To run without the shell, in a browser:
 
-1. Import this repository in Vercel. The defaults work (framework: Next.js, build command `npm run build`).
-2. Add the two `NEXT_PUBLIC_…` environment variables.
-3. Deploy, then put the deployed URL into Supabase's *Site URL* (step 1.3).
+```bash
+npm run serve
+```
 
-The app is a static site; `vercel.json` adds security headers. If your Supabase project is not on a
-`*.supabase.co` address, update `connect-src` in the Content-Security-Policy there.
+then open http://127.0.0.1:3210 (data goes to `.data/`; set `YGPOS_DATA` to change it).
 
-### Adding staff
+Build the Windows installer on a Windows machine:
 
-Staff create their own account on the sign-up page. The owner then adds that email under
-**Settings → Staff** as cashier or manager.
+```bash
+npm run dist
+```
 
-## Using it day to day
-
-- **First time on each device:** open the app once while online so it can store itself and the product list.
-- **Offline:** the cloud icon at the bottom of the menu shows the state. Bills made offline print with a
-  reference code; the invoice number is assigned when the bill uploads, and the bill can then be reprinted from Sales.
-  New customers, product changes, stock changes, cancellations, returns and reports need a connection.
-- **Never clear the browser's site data while bills are waiting to upload** — they exist only on that device until then.
-- **Printing:** choose the paper size under **Settings → This device**. In the print dialog pick the matching
-  paper and turn off headers/footers. A browser cannot drive a printer or cash drawer directly; see
-  [ARCHITECTURE.md](ARCHITECTURE.md#printing-and-hardware).
-
-## Before you rely on it
-
-- Run the migrations on a real Supabase project and go through signup → products → a few bills → a
-  cancellation → an offline bill. This path is covered by the automated tests, but only against the test setup.
-- Ask your accountant to check a printed tax invoice and the GST report. The tax arithmetic is tested,
-  but **this software has not been reviewed or certified for GST compliance** (no e-invoicing, no GSTR export).
-- Turn on database backups (Supabase paid plans include daily backups; on the free plan run `pg_dump`
-  on a schedule). See [ARCHITECTURE.md](ARCHITECTURE.md#backups-and-recovery).
-
-## Testing
+### Testing
 
 ```bash
 npm run lint
@@ -119,27 +141,22 @@ npm run typecheck
 npm test
 ```
 
-`npm test` runs the bill-arithmetic unit tests and, if a local PostgreSQL 15+ server is reachable, the
-database tests (security rules, sale/cancel/return/dues functions, and a check that the browser and
-database arithmetic agree to the paisa). Set `TEST_DATABASE_URL` to an admin connection string; the
-default is `postgres://postgres:postgres@127.0.0.1:5432/postgres`. The tests create and drop their own
-scratch databases and never touch Supabase.
-
-The browser test drives the built app in Chromium against the same local PostgreSQL. It needs Playwright
-installed and a build made with `NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321`:
-
-```bash
-npm run build
-```
-
 ```bash
 npm run test:e2e
 ```
 
+```bash
+npm run test:desktop
+```
+
+The last two need Playwright (`npm install --no-save playwright` and `npx playwright install chromium`)
+and a build. On Linux without a display, run the desktop test as `xvfb-run -a npm run test:desktop`.
+Node.js 22.13 or newer is required (the built-in SQLite module is used; there are no native add-ons).
+
 ## Documentation
 
-- [PROJECT_PLAN.md](PROJECT_PLAN.md) — scope, feature checklist, roadmap, risks
-- [ARCHITECTURE.md](ARCHITECTURE.md) — how it is built and why
-- [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md) — tables, constraints, security rules
-- [API_DOCUMENTATION.md](API_DOCUMENTATION.md) — database functions the app calls
+- [ARCHITECTURE.md](ARCHITECTURE.md) — how it is built, safety guarantees, backup and recovery
+- [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md) — tables, units, invariants, migrations
+- [API_DOCUMENTATION.md](API_DOCUMENTATION.md) — the core's methods and permissions
+- [PROJECT_PLAN.md](PROJECT_PLAN.md) — feature checklist, decisions, what is left
 - [CHANGELOG.md](CHANGELOG.md)

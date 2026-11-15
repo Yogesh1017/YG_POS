@@ -1,111 +1,64 @@
 # Database schema
 
-PostgreSQL 15+. Defined in `supabase/migrations/`. Money is `numeric(12,2)` (rupees), quantities
-`numeric(14,3)`, timestamps `timestamptz`.
-
-## Relationships
-
-```
-businesses ─┬─ business_members ── auth.users
-            ├─ invoice_counters
-            ├─ categories ── products ── stock_movements
-            ├─ customers
-            ├─ sales ─┬─ sale_items ── products
-            │         ├─ payments ── customers
-            │         └─ sale_returns ── sale_return_items ── sale_items
-            └─ audit_log
-```
-
-Every table carries `business_id`. Where a row points at another business-owned row, a composite
-foreign key `(id, business_id)` guarantees both belong to the same business.
+SQLite, one file. Defined in `desktop/core/migrations.ts`. All tables are `STRICT`; foreign keys
+are enforced. See [ARCHITECTURE.md](ARCHITECTURE.md#numbers) for how money and quantities are stored.
 
 ## Tables
 
-### businesses
-The shop. `name`, `legal_name`, contact and address fields, `state_code` (2-digit GST state code),
-`gst_registered`, `gstin`, `default_tax_rate`, `prices_include_tax`, `round_off_total`,
-`invoice_prefix` (1–4 capitals/digits, not `CN`), `receipt_footer`.
-Check `gst_details_required`: a GST-registered business must have a GSTIN whose first two digits equal `state_code`.
+| Table | Holds |
+| --- | --- |
+| `settings` | One row: business profile, GSTIN and state, invoice prefix, round-off, invoice texts, recovery-key hash |
+| `config` | Per-computer preferences: printers, second backup folder, last backup times |
+| `users` | Username, name, role (`owner` / `manager` / `cashier`), password hash, active flag |
+| `doc_counters` | Last number issued per series (`invoice`, `credit_note`) and financial year |
+| `brands`, `categories` | Names |
+| `products` | Name, brand, category, flavour, pack size, SKU, barcode, HSN, GST rate, rate-includes-GST flag, **base unit**, counted or weighed, expiry tracking, low-stock level, latest cost, shortfall |
+| `product_units` | Packing units: name, `factor_m` (base units inside), rate, default-for-sale / purchase flags, active flag. One row per product is the base unit |
+| `price_tiers` | Quantity prices: unit, minimum quantity, rate |
+| `customers` | Shop name, contact, phone, GSTIN, state, address, credit limit, opening balance, `opening_due`, `balance` |
+| `customer_prices` | Rate agreed with a customer for a unit |
+| `suppliers` | Name, contact, GSTIN, opening balance, `opening_due`, `balance` (what we owe) |
+| `purchases`, `purchase_items` | Supplier bills and lines (unit snapshot, quantity, rate, discount, GST, batch created) |
+| `stock_batches` | Every lot of stock: product, batch no, manufacture and expiry dates, quantity received, **quantity remaining**, cost per base unit, source |
+| `stock_movements` | Append-only stock ledger: product, batch, signed quantity, reason, reference, cost, note, who, when |
+| `sales`, `sale_items` | Invoices and lines (customer snapshot; unit snapshot; quantity in the unit sold and in base units; rate, list rate and price source; discount; GST split; cost) |
+| `sale_item_batches` | Which batches each invoice line took, how much, at what cost, and how much has come back |
+| `sale_returns`, `sale_return_items` | Credit notes: quantity returned per line, its condition (restock / damaged / melted / expired), value, how it was settled |
+| `payments` | Money received from or refunded to customers: kind (`sale`, `collection`, `refund`), method, amount, invoice or opening balance |
+| `supplier_payments` | Money paid to or refunded by suppliers |
+| `expenses`, `expense_categories` | Running costs |
+| `audit_log` | Who did what: set-up, settings, users, approvals, cancellations, returns, stock adjustments, purchases, restores |
 
-### business_members
-`(business_id, user_id)` primary key, `role` (`owner` | `manager` | `cashier`), `display_name`, `email`, `is_active`.
-Deactivating a member removes all access immediately.
+Stock movement reasons: `opening`, `purchase`, `purchase_cancel`, `sale`, `sale_cancel`,
+`sale_return`, `adjustment`, `damaged`, `melted`, `expired`.
 
-### invoice_counters
-`(business_id, series, fy)` → `last_no`. Series are `invoice` and `credit_note`; `fy` is the Indian
-financial year such as `26-27`. Incremented inside the same transaction as the document, so numbers
-are consecutive with no gaps. Not readable or writable by clients.
+## Rules the database itself enforces
 
-### categories
-`name`, unique per business (case-insensitive).
+- A batch's remaining quantity can never be below zero.
+- A counted product can never hold a fraction of a base unit (triggers on batches and movements).
+- Stock movements and the audit log cannot be edited or deleted.
+- Invoice numbers, credit-note numbers and `(financial year, sequence)` are unique.
+- `client_ref` is unique on invoices, purchases and credit notes (stops double submits).
+- SKU, barcode, usernames, brand and category names are unique; unit names are unique per product.
+- A GST-registered business must have a GSTIN whose first two digits equal its state code.
+- Amounts, rates and quantities have range checks; balances cannot be negative.
 
-### products
-`name`, `category_id`, `sku` (unique per business, case-insensitive), `barcode` (unique per business),
-`hsn_code` (4–8 digits), `unit`, `sale_price`, `purchase_price`, `tax_rate` (0–100),
-`price_includes_tax`, `track_stock`, `stock_qty`, `low_stock_threshold`, `description`, `is_active`.
-`stock_qty` is maintained by a trigger and always equals the sum of the product's stock movements.
-A product referenced by a sale cannot be deleted (deactivate it instead).
+## Invariants the tests check after every scenario
 
-### customers
-`name`, `phone` (unique per business), `gstin`, `state_code`, `address`, `balance`.
-`balance` (what the customer owes) is maintained by the sale/return/payment functions and always
-equals the sum of `due_amount` over the customer's completed sales.
+- For each product: sum of batch quantities − shortfall = sum of its stock movements.
+- For each customer: `balance` = `opening_due` + unpaid amounts on their completed invoices = the ledger's closing balance.
+- For each supplier: the same, with purchases.
+- For each invoice: sum of line totals + round-off = invoice total.
 
-### sales
-One bill. `id` is generated on the till and is the idempotency key.
-`invoice_no` (unique per business), `fy`, `status` (`completed` | `cancelled`), customer link and a
-snapshot of the customer's name/phone/GSTIN, `place_of_supply`, `is_interstate`, totals
-(`gross_total`, `discount_total`, `taxable_total`, `cgst_total`, `sgst_total`, `igst_total`,
-`tax_total`, `round_off`, `grand_total`), `paid_total`, `due_amount`, `cost_total`, `returned_total`,
-`note`, `sold_at` (time at the till), `created_at` (time recorded by the server), `created_by`, and
-cancellation fields.
+## Ledgers
 
-### sale_items
-One line. Snapshots `name`, `hsn_code`, `unit` and `unit_cost` from the product at sale time, plus
-`qty`, `unit_price`, `price_includes_tax`, `gross_amount`, `discount_amount`, `tax_rate`,
-`taxable_value`, `cgst`, `sgst`, `igst`, `line_total`, `tracked_stock`, `returned_qty`.
-
-### payments
-Money movements: `kind` is `sale` (paid at billing), `due_collection` (paid later) or `refund`
-(money paid back; stored as a positive amount). `method` is `cash` | `upi` | `card` | `other`.
-`batch_id` groups the rows written by one dues collection.
-
-### sale_returns, sale_return_items
-A return against a bill with its `credit_note_no`, whether goods were `restocked`, value
-(`taxable_total`, `tax_total`, `total`), and how it was settled (`due_reduced`, `refund_paid`).
-
-### stock_movements
-Append-only ledger: `product_id`, `qty_change`, `reason` (`opening`, `stock_in`, `sale`,
-`sale_cancel`, `sale_return`, `adjustment`, `damage`, `expiry`), `ref_type`/`ref_id` linking to the
-sale or return that caused it, `unit_cost`, `note`, `created_by`.
-
-### audit_log
-`action`, `entity`, `entity_id`, `details` (JSON), `user_id`, `created_at`. Readable by owner and manager.
-
-## Indexes
-
-Beyond primary and unique keys: sales by `(business_id, sold_at desc)` and by customer; sale items by
-sale and by `(business_id, product_id)`; payments by `(business_id, paid_at desc)`, sale and batch;
-stock movements by `(product_id, created_at desc)` and `(business_id, created_at desc)`; products and
-customers by `(business_id, lower(name))`; members by user.
-
-## Access rules
-
-`app_role(business_id)` returns the caller's role, or null if they are not an active member.
-
-| Table | Read | Insert / update / delete from the client |
-| --- | --- | --- |
-| businesses | members | update by owner (listed columns only) |
-| business_members | members | none — `add_member`, `set_member` |
-| categories, products | members | owner, manager (not `stock_qty`) |
-| customers | members | any member may add/edit (not `balance`); delete by owner, manager |
-| sales, sale_items, payments, sale_returns, sale_return_items, stock_movements | members | none — functions only |
-| audit_log | owner, manager | none |
-| invoice_counters | nobody | none |
-
-Anonymous (not signed in) users have no access to any table or function.
+Customer and supplier ledgers are not stored. They are built on request from invoices, payments,
+credit notes, cancellations and the opening balance, so they cannot disagree with those records.
 
 ## Changing the schema
 
-Add a new timestamped file in `supabase/migrations/`; never edit one that has been applied to a real
-database. Run `npm test` — the database tests rebuild a scratch database from all migrations.
+Add a new entry at the end of the `MIGRATIONS` list. Never edit an entry that has shipped. The
+list position is the schema version (`PRAGMA user_version`). On start-up the app applies any missing
+entries, each in its own transaction, after keeping a `pre-upgrade` copy of the database. Changes
+must be additive (new tables, new columns with defaults). Run `npm test`: the backup tests include
+upgrading an older database and restoring an older backup.

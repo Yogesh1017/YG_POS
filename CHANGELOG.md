@@ -1,25 +1,35 @@
 # Changelog
 
-## 0.1.0 — 2026-11-13
+## 1.0.0 — 2026-11-15
 
-First version. Scope: one shop; billing, products, sales history, invoices and basic inventory first.
+Rebuilt as an offline Windows desktop application for a wholesale ice cream business.
+
+### Changed
+- Runs entirely on one computer with a local SQLite database. Supabase, Vercel, the service worker
+  and the sync queue are gone; the previous web version is archived in `archive/web-supabase-v0.1/`.
+- Business rules moved from PostgreSQL functions to a TypeScript core inside the desktop app.
+- Sign-in is local (username and password, owner recovery key) instead of email-based.
+- Invoice numbers are assigned locally and are final as soon as the invoice is saved.
 
 ### Added
-- Database schema with Row Level Security, and SQL functions for sales, cancellations, returns,
-  stock adjustments, dues collection, staff and reports (`supabase/migrations/`).
-- Sign-up, sign-in, password reset, shop setup; owner / manager / cashier roles.
-- Billing screen: search, barcode scanning, discounts, split payments, credit sales, change calculation.
-- GST: optional registration, CGST/SGST/IGST, inclusive/exclusive prices, HSN/SAC, invoice numbering by financial year.
-- Bill printing for 58 mm, 80 mm and A4 through the browser.
-- Offline: installable app shell (service worker), on-device catalog and sales queue with idempotent upload.
-- Sales history with cancel and partial return (credit notes).
-- Products, categories, stock adjustments and history, low-stock indicators.
-- Customers, dues and payment collection.
-- Dashboard and date-range reports with CSV export.
-- Tests: 18 arithmetic unit tests, 36 database integration tests, 27-step browser end-to-end test.
+- Packing units per product on a single base unit; quantity prices; customer-specific rates.
+- Keyboard-first wholesale invoice screen with approval for manual rates, selling beyond stock and
+  exceeding a credit limit.
+- Batches and expiry dates; earliest-expiry-first selling; expired stock blocked from sale.
+- Damaged / melted / expired write-offs; returns into stock or into wastage; credit notes.
+- Suppliers, purchase bills, supplier payments and ledgers.
+- Customer credit limits, opening balances, ledgers and printable statements.
+- Expenses and net profit; product, customer, purchase, wastage, outstanding, stock and GST
+  reports; invoice register.
+- A4 wholesale tax invoice with amount in words, thermal receipt, PDF export, printer selection.
+- Automatic verified backups to two locations; restore with safety copy; backup check.
+- Windows installer built by GitHub Actions.
 
 ### Known limitations
-- Not yet run against a hosted Supabase project or deployed; see README "Before you rely on it".
-- No suppliers/purchases, expenses, net profit, multiple outlets, variants, images or loyalty points.
-- New customers cannot be created while offline.
-- Net profit is not reported because expenses are not recorded.
+- Not yet run on the target Windows PC or printed on real printers.
+- The installer is not code-signed (Windows shows an "unknown publisher" warning).
+- See README "Not included".
+
+## 0.1.0 — 2026-11-13
+
+First version: a browser app for a retail shop on Supabase. Archived.

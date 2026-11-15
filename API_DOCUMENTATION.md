@@ -1,104 +1,116 @@
-# API
+# Core API
 
-There is no custom HTTP API. The app uses the Supabase client for:
+The interface calls the core with `POST /api/rpc` and a JSON body `{ "method": "...", "args": { … } }`,
+plus the session token in the `x-session` header. The address is the app's own (`app://ygpos`); it
+is not reachable from outside the app. Every reply is `{ ok: true, data }` or
+`{ ok: false, error: { code, message, data? } }`.
 
-1. **Table access** (PostgREST) for simple reads and catalog edits, limited by the rules in
-   [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md#access-rules).
-2. **Database functions** (`supabase.rpc(name, args)`) for everything that changes money or stock.
+Error codes: `auth` (sign in again), `forbidden`, `invalid`, `not_found`, `conflict`,
+`needs_approval`, `internal` (nothing was saved).
 
-All functions require a signed-in user, run as one transaction, and raise an error with a readable
-message when they refuse. Common error codes: `42501` not allowed, `22023` invalid input,
-`23503` referenced row missing, `P0002` not found.
+Each method validates its input, checks the caller's role, and runs in one database transaction.
+Money is in paise, quantities in thousandths (`*_m`), dates `YYYY-MM-DD`.
 
-## create_business(p jsonb) → uuid
-Creates a business and makes the caller its owner.
-`p`: `name` (required), `owner_name`, `legal_name`, `phone`, `email`, `address`, `city`, `pincode`,
-`state_code`, `gst_registered`, `gstin`, `default_tax_rate`, `prices_include_tax`.
+Roles: **A** = anyone signed in, **M** = owner or manager, **O** = owner, **P** = no sign-in needed.
 
-## create_sale(p jsonb) → jsonb
-Records a bill. Any member.
+## Sign-in, users, settings
+
+| Method | Role | Purpose |
+| --- | --- | --- |
+| `app.status` | P | Whether first-run setup is done; the signed-in user |
+| `setup.create` | P | First run only: owner login + business profile. Returns a session and the recovery key |
+| `auth.login`, `auth.logout` | P | Start / end a session |
+| `auth.changePassword` | A | Change own password |
+| `auth.recover` | P | Reset the owner password with the recovery key; issues a new key |
+| `settings.get` / `settings.update` | A / O | Business, GST and invoice settings |
+| `config.get` / `config.set` | A | Printer preferences; `backup_dir_2` is owner-only |
+| `users.list`, `users.create`, `users.update` | O | Staff logins, roles, access, password reset |
+| `audit.list` | O | Recent audit entries |
+
+## Catalog and stock
+
+| Method | Role | Purpose |
+| --- | --- | --- |
+| `brands.*`, `categories.*`, `expense_categories.*` (`list`, `save`, `delete`) | A / M | Simple lists |
+| `products.list` | A | Products with units, quantity prices, stock on hand, expired and sellable quantities |
+| `products.save` | M | Create or update a product, its packing units, rates and quantity prices; optional opening stock for a new product |
+| `products.delete` | M | Only for products with no stock or invoice history |
+| `stock.adjust` | M | `add` (opening stock / count correction), `remove` (damaged / melted / expired / correction, optionally from one batch), or `set` (counted quantity) |
+| `stock.batches`, `stock.movements`, `stock.expiring` | A | Batches on hand, movement history, expired and soon-to-expire batches |
+
+## Invoices
+
+### `sales.create` (A)
 
 ```jsonc
 {
-  "id": "uuid generated on the till",       // idempotency key
-  "business_id": "uuid",
-  "sold_at": "2026-11-13T18:30:00+05:30",   // optional; a time in the future is replaced by now
-  "customer_id": "uuid | null",             // required when the bill is not fully paid
-  "customer_name": "…", "customer_phone": "…", "customer_gstin": "…",   // for one-off customers
-  "place_of_supply": "27",                  // GST state code; default: customer's, else the shop's
+  "client_ref": "uuid made by the screen",   // a repeat returns the first result
+  "customer_id": 12,                          // or null for a cash sale
+  "cash_customer_name": "…",                  // optional name on a cash sale
   "note": "…",
-  "client_total": "236.00",                 // what the till showed; compared, never stored
-  "items": [
-    { "product_id": "uuid", "qty": "2.000", "unit_price": "118.00", "discount": "0.00",
-      "tax_rate": "18.00", "price_includes_tax": true }
-  ],
-  "payments": [ { "method": "cash", "amount": "236.00", "reference": null } ]
+  "bill_discount": 10000,
+  "items": [ { "product_id": 3, "unit_id": 9, "qty_m": 2000, "unit_price": 108000, "discount": 0 } ],
+  "payments": [ { "method": "cash", "amount": 100000, "reference": null } ],
+  "approved": ["price", "stock", "credit"],   // what the user confirmed after a needs_approval reply
+  "approver": { "username": "…", "password": "…" }   // when a cashier is billing
 }
 ```
 
-Behaviour:
-- Recomputes every amount (see the rounding rules in [ARCHITECTURE.md](ARCHITECTURE.md#money-is-never-a-float)).
-  `tax_rate` and `price_includes_tax` default to the product's values; tax is forced to 0 when the
-  business is not GST-registered.
-- Validates quantities (> 0, ≤ 3 decimals), prices (≥ 0, 2 decimals), discounts (≤ line amount),
-  payments (> 0, sum ≤ bill total), up to 500 items.
-- Writes sale, items, payments and stock movements; raises the customer's balance by any unpaid
-  amount; assigns the next invoice number for the financial year of `sold_at`.
-- Audits billed prices/tax rates that differ from the catalog, and a `client_total` that differs from the computed total.
-- **Idempotent:** calling again with the same `id` changes nothing and returns the original result with `"duplicate": true`.
+Returns the saved invoice with lines, payments and returns. If something needs approval the reply is
+`needs_approval` with `data.problems` (each `{ type, message }`) and `data.needs_manager`; nothing is
+saved until the request is sent again with `approved` (and `approver` for a cashier).
 
-Returns `{ id, invoice_no, status, gross_total, discount_total, taxable_total, cgst_total,
-sgst_total, igst_total, tax_total, round_off, grand_total, paid_total, due_amount, duplicate }`.
+| Method | Role | Purpose |
+| --- | --- | --- |
+| `sales.list` | A | Filter by date range, text (number, customer, phone), customer, status (`paid`, `partial`, `unpaid`, `cancelled`) |
+| `sales.get` | A | One invoice with lines, payments, returns |
+| `sales.cancel` | M | Cancel with a reason: stock back to its batches, due removed, refund recorded, number kept |
+| `sales.return` | M | Credit note for quantities in base units, each `restock`, `damaged`, `melted` or `expired`. Reduces the invoice's due first, then refunds (never more than was received) |
+| `returns.get` | A | One credit note with its lines |
 
-## cancel_sale(p_sale_id uuid, p_reason text) → jsonb
-Owner or manager. Voids a whole bill: restores stock, removes its due from the customer's balance,
-records refunds mirroring the payments received, marks the sale cancelled (the invoice number is kept).
-Requires a reason of at least 3 characters. Refused if the sale already has returns. Calling it on an
-already cancelled sale is a no-op.
+## Customers, suppliers, purchases, expenses
 
-## create_return(p jsonb) → jsonb
-Owner or manager. `p`: `id` (uuid, idempotency key), `sale_id`, `items: [{ sale_item_id, qty }]`,
-`restock` (boolean, default true), `refund_method`, `reason`.
-Returns part or all of a bill's lines. Each line's value is its proportional share of the line total
-(the last unit takes the remainder, so partial returns never drift by a paisa). The value first
-reduces any unpaid due on the bill; the rest is recorded as a refund by `refund_method`, never more
-than was received. Restocked goods create stock movements. Assigns a credit note number (`CN/26-27/1`).
-Returns `{ id, credit_note_no, total, due_reduced, refund_paid, duplicate }`.
+| Method | Role | Purpose |
+| --- | --- | --- |
+| `customers.list`, `customers.save` | A | Cashiers may add and edit customers but not credit limits, opening balances or active status |
+| `customers.delete` | M | Only with no invoices or payments |
+| `customers.prices`, `customers.setPrice` | A / M | Rates agreed with a customer |
+| `customers.recent` | A | Last rate per unit and recent invoices, shown while billing |
+| `customers.collect` | A | Record a payment received: opening balance first, then oldest invoices. Idempotent on `client_ref` |
+| `customers.ledger` | A | Statement with running balance, optional date range |
+| `suppliers.list`, `save`, `delete`, `pay`, `ledger` | M | The same for suppliers |
+| `purchases.create` | M | Supplier bill: adds a batch per line, sets product cost, records payment and amount owed. Refuses a repeated bill number for the same supplier |
+| `purchases.list`, `purchases.get` | M | Purchase history |
+| `purchases.cancel` | M | Only while none of its stock has been sold or adjusted |
+| `expenses.list`, `save`, `delete` | M | Running costs (deletions are audited) |
 
-## adjust_stock(p_product_id uuid, p_qty_change numeric, p_reason stock_reason, p_note text, p_unit_cost numeric) → numeric
-Owner or manager. Manual stock change; returns the new stock level.
-`p_reason`: `opening` or `stock_in` (quantity must be positive; `p_unit_cost`, if given, becomes the
-product's cost price), `damage` or `expiry` (must be negative), `adjustment` (either sign).
+## Reports
 
-## record_customer_payment(p_id uuid, p_customer_id uuid, p_amount numeric, p_method payment_method, p_reference text) → jsonb
-Any member. Collects money against a customer's dues, applied to the oldest unpaid bills first.
-Refused if the amount exceeds the balance. Idempotent on `p_id`. Returns `{ balance, duplicate }`.
+| Method | Role | Returns |
+| --- | --- | --- |
+| `reports.dashboard` | A | Today and month figures, 14-day trend, best sellers, low stock. Profit, purchases and supplier figures are withheld from cashiers |
+| `reports.summary` | M | Sales, returns, revenue, cost, gross profit, wastage, expenses, net profit, purchases, by day, by payment method, balances |
+| `reports.products`, `reports.customers`, `reports.purchases` | M | Breakdowns for a date range |
+| `reports.wastage` | M | Damaged / melted / expired entries and totals at cost |
+| `reports.outstanding` | M | Customers who owe and suppliers we owe, with oldest unpaid date |
+| `reports.stock` | M | Stock on hand, expired quantity and value at cost per product |
+| `reports.gst` | M | Output GST by rate and HSN, credit notes, input GST on purchases |
+| `reports.invoiceRegister` | M | Every invoice number in a financial year with status, and any missing numbers |
 
-## add_member(p_business_id uuid, p_email text, p_role member_role, p_display_name text) → uuid
-Owner only. Gives an existing account (they must have signed up) access as `manager` or `cashier`.
+Definitions: **revenue** = taxable value of invoices less returns (GST is never revenue);
+**gross profit** = revenue − actual cost of the batches sold (restocked returns added back);
+**net profit** = gross profit − wastage at cost − expenses.
 
-## set_member(p_business_id uuid, p_user_id uuid, p_role member_role, p_is_active boolean) → void
-Owner only. Changes a staff member's role or removes/restores access. The owner cannot be changed.
+## Backup
 
-## report_summary(p_business_id uuid, p_from date, p_to date) → jsonb
-Owner or manager. Figures for an inclusive range of India-time calendar days (max two years).
+| Method | Role | Purpose |
+| --- | --- | --- |
+| `backup.status` | M | Folders, last backup times, warning text, list of backups |
+| `backup.now` | M | Take and verify a backup; copy to the second location |
+| `backup.inspect` | O | Check any backup file and show its date, last invoice, dues and stock value |
+| `backup.restore` | O | Replace the live data with a backup (after saving a `pre-restore` copy). Signs everyone out |
 
-| Field | Meaning |
-| --- | --- |
-| `sales` | `count`, `billed_total` (incl. tax), `taxable_total`, `tax_total`, `discount_total`, `cost_total`, `credit_given` — completed bills only |
-| `returns` | `count`, `total`, `taxable_total`, `tax_total`, `cost_total` (cost of restocked goods) — returns recorded in the range |
-| `revenue` | `sales.taxable_total − returns.taxable_total` (excludes tax) |
-| `gross_profit` | `revenue − (sales.cost_total − returns.cost_total)`; before expenses |
-| `cancelled_count` | bills cancelled |
-| `by_day` | `[{ day, total, count }]` |
-| `by_method` | `[{ method, received, refunded }]` — includes dues collected in the range |
-| `top_products` | top 10 by amount: `[{ product_id, name, qty, total }]` |
-| `gst_by_rate` | `[{ tax_rate, taxable, cgst, sgst, igst }]` on bills, before returns |
-| `gst_by_hsn` | `[{ hsn_code, tax_rate, qty, taxable, tax }]` |
-| `outstanding_dues`, `stock_value`, `low_stock_count` | current values, not limited to the range |
+## Desktop bridge (`window.desktop`, inside the app only)
 
-Net profit is not returned: expenses are not recorded in this version.
-
-## Internal functions (not callable by clients)
-`app_role`, `fy_of`, `next_doc_no`, `sale_result`, and the trigger functions. `app_role` is callable
-because the security policies use it; it only reveals the caller's own role.
+`print({ paper, printer?, silent? })`, `savePdf({ paper, filename })`, `printers()`, `pickFolder()`,
+`pickBackupFile()`, `openFolder(folder)`, `version()`.

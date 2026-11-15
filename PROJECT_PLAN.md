@@ -1,118 +1,99 @@
-# Project plan
+# Project plan and status
 
-## Scope decision
+## Direction (approved)
 
-The original brief describes a multi-tenant commercial POS platform. It was then narrowed: **this is
-for one shop first; prioritise billing, product management, sales history, invoices and basic
-inventory; no payment gateways; keep the architecture simple.** This plan follows the narrowed scope.
-The data model still isolates businesses from each other, so opening it to more shops later does not
-need a redesign — but nothing has been built *for* that yet (no billing/subscriptions, no admin console).
+One Windows billing computer · fully offline · desktop application · local SQLite database as the
+only source of truth · no Supabase, Vercel, internet, cloud sync or LAN · the earlier web version
+kept as an archived reference.
 
-## Assumptions made (change these if they are wrong)
+## Decisions taken (defaults you approved)
 
-| Assumption | Why | Cost of changing later |
-| --- | --- | --- |
-| One outlet per business | Single shop | Medium: add `outlet_id` to stock and sales, per-outlet stock levels |
-| Three roles: owner, manager, cashier | Enough for a small shop; "administrator" and "inventory manager" fold into manager | Low: `member_role` enum + policies |
-| Selling below zero stock is allowed | An offline till cannot know the true stock, and a counter sale has already happened | Low: a business setting checked in `create_sale` |
-| Cashiers may change the price on a bill; every deviation from the catalog price is written to the audit log | Small shops negotiate | Low |
-| Offline bills get their invoice number when they upload | Guarantees one gapless series without per-device series | Medium: per-device series |
-| Times and financial years use India time (IST) | India-first | Low |
-| Bill total rounds to the nearest rupee by default (switchable) | Common practice | None (setting) |
+| Topic | Decision |
+| --- | --- |
+| Packing | Per product; any levels; all levels can be sold; each size of a flavour is its own product |
+| Weight / volume | Supported: a product can be marked "sold by weight or volume" and then allows decimals |
+| Expiry | Tracked per product (on by default); batch number optional |
+| Freezers | One stock total, no freezer-wise tracking |
+| Selling beyond stock | Warning; an owner or manager can approve; recorded as a shortfall that the next stock-in settles |
+| Rates | Quoted before GST by default (switchable per product) |
+| Manual rates | Owner and manager; a cashier needs their password; always logged |
+| Rounding | Invoice total rounded to the nearest rupee (switchable) |
+| Invoice numbers | `PREFIX/FY/N`, restarting each April; sequential, unique, never reused; cancelled numbers stay in the register |
+| Cash sales | Allowed without a customer, but must be paid in full |
+| Credit limit | Warning; owner or manager can approve |
+| GST | Regular scheme, tax invoices; IGST when the customer's state differs |
+| Data | Started empty; nothing carried over from the web version |
 
 ## Feature checklist
 
-Legend: ✅ built and covered by automated tests · 🟡 built, lightly tested · ⬜ not built
+✅ built and covered by automated tests · 🟡 built, checked on screen only · ⬜ not built
 
-### Authentication and business setup
-- ✅ Sign-up, sign-in, sign-out, password recovery
-- ✅ Shop profile, GST/tax settings, invoice prefix, receipt footer
-- ✅ Roles (owner / manager / cashier) enforced in the database
-- ✅ Business data isolation (Row Level Security)
-- ⬜ Multiple outlets
-- ⬜ Administrator and Inventory Manager as separate roles
+**Users and settings**
+- ✅ First-run setup, local sign-in, lockout after repeated wrong passwords, owner recovery key
+- ✅ Owner / manager / cashier permissions enforced in the core; audit log
+- ✅ Business, GST and invoice settings
 
-### Billing
-- ✅ Product search, barcode scan, category filter
-- ✅ Cart, quantity (incl. fractional for weighed goods), price override, remove
-- ✅ Line and bill discounts (₹ and %)
-- ✅ GST calculation, inclusive and exclusive
-- ✅ Cash, UPI, card, other; split payments; change
-- ✅ Credit (due) sales
-- ✅ Bill saved locally first; invoice number from server
-- ✅ Printing: 80 mm, A4 (🟡 58 mm layout shares the 80 mm code but was not inspected separately)
-- ✅ Cancellation and partial returns, owner/manager only, with reason / credit note
-- ⬜ Hold and resume a bill
-- ⬜ Items not in the catalog (ad-hoc line)
+**Products and packing**
+- ✅ Brand, flavour, pack size, category, SKU, barcode, HSN, GST rate
+- ✅ Base unit with any number of packing units; whole-number rule for counted goods; decimals for weighed goods
+- ✅ Unit rates, quantity prices, customer rates; a used unit's size is frozen
+- ⬜ Import from Excel/CSV
 
-### Products
-- ✅ Create, edit, delete (blocked once sold; deactivate instead)
-- ✅ Categories, SKU, barcode, cost and selling price, tax rate, HSN/SAC, units, description, active flag
-- ⬜ Product images
-- ⬜ Variants
+**Invoices**
+- ✅ Customer selection, product search, barcode entry, unit, quantity, rate, line and bill discount
+- ✅ GST per line, CGST/SGST/IGST, round-off; totals recomputed by the core
+- ✅ Paid / part paid / credit; split payments; credit-limit check
+- ✅ Approval flow for manual rate, stock shortfall, credit limit
+- ✅ Final sequential numbering; double-submit protection; draft survives restart
+- ✅ A4 invoice and thermal receipt content · ✅ PDF export (desktop shell test) · 🟡 paper output on real printers
+- ✅ Search by number, customer, date, status; reprint
+- ✅ Cancel with reason; partial returns with credit notes; 🟡 credit note print layout
 
-### Inventory
-- ✅ Stock tracking tied to sales, cancellations and returns
-- ✅ Stock in, damaged, expired, count correction
-- ✅ Low-stock indicators, movement history, stock value at cost
-- ⬜ Transfers between outlets
-- ⬜ Batch / expiry-date tracking
+**Stock**
+- ✅ Batches, expiry, earliest-expiry-first, expired stock blocked
+- ✅ Opening stock, count correction, damaged / melted / expired write-off, movement history
+- ✅ Low-stock and expiring lists; stock value at cost
+- ⬜ Freezer-wise stock
 
-### Customers
-- ✅ Register, edit, delete (blocked once billed)
-- ✅ Purchase history, balances, dues collection
-- ⬜ Loyalty points, customer-specific discounts
-- ⬜ Creating a customer while offline
+**Purchases and suppliers**
+- ✅ Supplier bills in any unit with batch, expiry, discount, GST; real cost per base unit
+- ✅ Supplier balances, payments, ledger; cancel an untouched purchase
+- ⬜ Purchase returns to supplier (use a stock adjustment and note for now)
 
-### Suppliers, purchases, expenses
-- ⬜ All of it. Stock received is recorded as a stock adjustment with an optional cost and note.
+**Customers and credit**
+- ✅ Shop name, contact, GSTIN, state, address, credit limit, opening balance
+- ✅ Payments settle oldest dues first; ledger with running balance; 🟡 printed statement layout
+- ⬜ Advance payments (a payment larger than the balance is refused)
 
-### Reports
-- ✅ Today: billed, revenue, gross profit, GST, dues, stock value, low stock
-- ✅ Date-range report, sales per day, payments by method, best sellers
-- ✅ GST by rate and by HSN/SAC; CSV export
-- ⬜ Net profit (needs expenses)
-- ⬜ GSTR-1 / e-invoice export
+**Reports**
+- ✅ Sales and profit, products, customers, purchases, wastage, outstanding, stock, GST, invoice register
+- ✅ Dashboard; CSV export
+- ⬜ GSTR-shaped exports, e-invoice, e-way bill
 
-### Offline
-- ✅ App shell available offline (service worker)
-- ✅ On-device catalog; local billing; persistent queue
-- ✅ Automatic, idempotent upload; duplicate prevention; survives reload
-- ✅ Opens even when the login token expired while offline
-- ✅ Sync status indicator; rejected bills surfaced for review
+**Backup and recovery**
+- ✅ Automatic verified backups (start, every 2 hours, close), rotation, second location with warnings
+- ✅ Check a backup; restore with safety copy; damaged files refused; old-version backups upgraded
+- ✅ Crash safety (hard kill mid-use), interrupted restore, single-instance lock
 
-### Security and reliability
-- ✅ RLS on every table; financial tables are read-only to clients
-- ✅ Server-side recomputation of all amounts; atomic functions
-- ✅ Audit log for cancellations, returns, price deviations, staff changes
-- ✅ Input validation on client (Zod) and server (constraints + function checks)
-- ✅ Security headers and Content-Security-Policy
-- 🟡 Rate limiting: relies on Supabase Auth's built-in limits; none added for the data API
+**Delivery**
+- ✅ Desktop shell tested on Linux; Windows tests and installer build run on GitHub Actions
+- ⬜ Verified on the target PC and printers (needs you)
+- ⬜ Code-signed installer
 
-### Deployment
-- 🟡 Vercel configuration and instructions written; **not deployed**
-- ⬜ CI pipeline
+## Suggested next steps
 
-## Roadmap
+1. Install on the billing PC, enter real products and a few customers, bill for a day alongside the
+   current method, print on both printers.
+2. Report anything awkward in the invoice screen — it is the part used most.
+3. Then, in order of likely value: product import from Excel, purchase returns, customer advance
+   payments, GST export for the accountant.
 
-1. **Trial (next).** Create the Supabase project, deploy, enter real products, run alongside the
-   current billing method for a few days. Fix what the trial shows.
-2. **Purchases and expenses.** Suppliers, purchase entries that add stock and cost, supplier dues,
-   expense entries; then net profit on reports.
-3. **Counter conveniences.** Hold/resume bills, ad-hoc items, product import from CSV, barcode label printing.
-4. **Hardware.** If browser printing proves too slow at the counter: direct ESC/POS printing and
-   drawer kick through WebUSB/WebSerial or a small local print helper.
-5. **Compliance.** GSTR-1-shaped exports; e-invoicing only if turnover requires it.
-6. **Growth, if wanted.** Multiple outlets, more roles, variants, onboarding for other shops.
+## Risks that remain
 
-## Technical risks
-
-| Risk | Mitigation in place | Still open |
+| Risk | Mitigation | Still open |
 | --- | --- | --- |
-| Device lost/cleared while bills are waiting | Bills upload within seconds when online; UI warns before sign-out | A device that dies offline loses its un-uploaded bills |
-| Browser and database compute different totals | Shared rules, 150 randomised bills compared in tests; server value wins and mismatches are audited | — |
-| Same bill uploaded twice | Bill id is the primary key; `create_sale` is idempotent, tested under concurrency | — |
-| Stale prices on an offline till | Bill records the price shown to the customer; deviations audited | Owner must review the audit log |
-| Behaviour differs on real Supabase | Standard Postgres + PostgREST features only | Needs the trial in step 1 |
-| GST rules misapplied | Tested arithmetic; clear disclaimers | Needs an accountant's review; composition scheme, cess, reverse charge are not handled |
-| Browser storage evicted by the OS | The app asks the browser for persistent storage; the catalog re-downloads | The browser may refuse the request; un-uploaded bills are the only data at risk |
+| The PC's disk fails | Backups to a second drive, verified, with warnings when it is missing | The second drive must actually be plugged in; consider swapping two drives weekly |
+| The PC is lost or stolen | Data folder can be restored on a new PC | The database file is not encrypted; use Windows BitLocker |
+| Wrong GST treatment | Tested arithmetic, configurable rates | Accountant review; no e-invoice/e-way bill |
+| Printer differences | Uses Windows printing, selectable printers | Untested on real hardware |
+| Forgotten owner password | Recovery key shown at setup | If both are lost, the data can only be opened by a developer |
