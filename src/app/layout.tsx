@@ -9,8 +9,7 @@ import { Providers } from "@/components/providers";
 
 export const metadata: Metadata = {
   title: "YG POS",
-  description: "Billing, stock and sales for your shop",
-  manifest: "/manifest.webmanifest",
+  description: "Wholesale billing and stock",
 };
 export const viewport: Viewport = {
   themeColor: "#14532d",

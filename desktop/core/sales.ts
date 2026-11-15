@@ -3,7 +3,7 @@ import { resolvePrice } from "../../src/lib/pricing";
 import { computeSale, distributeDiscount, lineGross, type LineInput } from "../../src/lib/tax";
 import { toBaseM } from "../../src/lib/units";
 import { ANYONE, MANAGERS, audit, authoriser, define, zApprover, type Ctx } from "./core";
-import { costOf, getProduct, sellableM, stockBack, stockIn, stockOut, type Allocation, type ProductRow } from "./stock";
+import { costOf, getProduct, sellableM, stockBack, stockOut, type Allocation, type ProductRow } from "./stock";
 import { AppError, divRound, fyOf, zDate, zId, zMethod, zMoney, zOptText, zQtyM, zRef } from "./util";
 
 interface Settings { gst_registered: number; state_code: string | null; round_off_total: number; invoice_prefix: string }

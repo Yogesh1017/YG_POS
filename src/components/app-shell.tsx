@@ -1,24 +1,38 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, Boxes, LayoutDashboard, LogOut, Menu, Moon, Package, ReceiptText, ScanBarcode, Settings, Sun, Users, X } from "lucide-react";
+import { BarChart3, Boxes, HardDriveDownload, LayoutDashboard, LogOut, Menu, Moon, Package, ReceiptText, ScrollText, Settings, Sun, Truck, Users, Wallet, X, Factory } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
-import { SyncStatus } from "@/components/sync-status";
 import { cn } from "@/components/ui";
-import { db } from "@/lib/db";
+import { useApi } from "@/lib/api";
 import { useSession, useShop } from "@/lib/session";
 import type { Role } from "@/lib/types";
 
-const NAV: { href: string; label: string; icon: typeof Package; roles: Role[] }[] = [
-  { href: "/pos/", label: "Billing", icon: ScanBarcode, roles: ["owner", "manager", "cashier"] },
-  { href: "/sales/", label: "Sales", icon: ReceiptText, roles: ["owner", "manager", "cashier"] },
-  { href: "/products/", label: "Products", icon: Package, roles: ["owner", "manager"] },
-  { href: "/inventory/", label: "Stock", icon: Boxes, roles: ["owner", "manager"] },
-  { href: "/customers/", label: "Customers", icon: Users, roles: ["owner", "manager", "cashier"] },
-  { href: "/", label: "Dashboard", icon: LayoutDashboard, roles: ["owner", "manager"] },
-  { href: "/reports/", label: "Reports", icon: BarChart3, roles: ["owner", "manager"] },
-  { href: "/settings/", label: "Settings", icon: Settings, roles: ["owner", "manager", "cashier"] },
+const ALL: Role[] = ["owner", "manager", "cashier"], MGR: Role[] = ["owner", "manager"];
+const NAV: { href: string; label: string; icon: typeof Package; roles: Role[]; key?: string }[] = [
+  { href: "/billing/", label: "New invoice", icon: ScrollText, roles: ALL, key: "F1" },
+  { href: "/sales/", label: "Invoices", icon: ReceiptText, roles: ALL },
+  { href: "/customers/", label: "Customers", icon: Users, roles: ALL },
+  { href: "/products/", label: "Products", icon: Package, roles: MGR },
+  { href: "/inventory/", label: "Stock", icon: Boxes, roles: MGR },
+  { href: "/purchases/", label: "Purchases", icon: Truck, roles: MGR },
+  { href: "/suppliers/", label: "Suppliers", icon: Factory, roles: MGR },
+  { href: "/expenses/", label: "Expenses", icon: Wallet, roles: MGR },
+  { href: "/", label: "Dashboard", icon: LayoutDashboard, roles: ALL },
+  { href: "/reports/", label: "Reports", icon: BarChart3, roles: MGR },
+  { href: "/settings/", label: "Settings", icon: Settings, roles: ALL },
 ];
+
+/** Shows whether backups are healthy; owner/manager only. */
+function BackupBadge() {
+  const { data } = useApi<{ warning: string | null }>("backup.status");
+  if (!data) return null;
+  return (
+    <Link href="/settings/?tab=backup" title={data.warning ?? "Backups are up to date"} className={cn("flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-sm hover:bg-surface-2", data.warning ? "text-warn" : "text-muted")}>
+      <HardDriveDownload className="size-4 shrink-0" aria-hidden /> {data.warning ? "Backup needs attention" : "Backups OK"}
+    </Link>
+  );
+}
 
 function ThemeToggle() {
   const [dark, setDark] = useState(false);
@@ -37,24 +51,18 @@ function ThemeToggle() {
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const { business, member, role } = useShop();
+  const { settings, user, role, canManage } = useShop();
   const { signOut } = useSession();
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
   useEffect(() => setMenuOpen(false), [pathname]);
   const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href.replace(/\/$/, "")));
 
-  const handleSignOut = async () => {
-    const waiting = await db.sales.where({ business_id: business.id, status: "pending" }).count();
-    if (waiting > 0 && !window.confirm(`${waiting} bill(s) have not been uploaded yet. They stay on this device and upload after the next sign-in here. Sign out anyway?`)) return;
-    await signOut();
-  };
-
   const sidebar = (
     <>
       <div className="px-4 pt-4 pb-3">
-        <div className="truncate font-semibold tracking-tight">{business.name}</div>
-        <div className="truncate text-xs text-muted">{member.display_name} · {role}</div>
+        <div className="truncate font-semibold tracking-tight">{settings.business_name}</div>
+        <div className="truncate text-xs text-muted">{user.display_name} · {role}</div>
       </div>
       <nav className="flex-1 space-y-0.5 overflow-y-auto px-2" aria-label="Main">
         {NAV.filter((n) => n.roles.includes(role)).map((n) => (
@@ -67,9 +75,9 @@ export function AppShell({ children }: { children: ReactNode }) {
         ))}
       </nav>
       <div className="space-y-0.5 border-t border-border p-2">
-        <SyncStatus businessId={business.id} />
+        {canManage && <BackupBadge />}
         <ThemeToggle />
-        <button onClick={() => void handleSignOut()} className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-sm text-muted hover:bg-surface-2">
+        <button onClick={() => void signOut()} className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-sm text-muted hover:bg-surface-2">
           <LogOut className="size-4" /> Sign out
         </button>
       </div>
@@ -80,10 +88,9 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className="flex h-dvh">
       <aside className="hidden w-52 shrink-0 flex-col border-r border-border bg-surface lg:flex">{sidebar}</aside>
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex items-center justify-between border-b border-border bg-surface px-3 py-2 lg:hidden">
+        <header className="flex items-center gap-3 border-b border-border bg-surface px-3 py-2 lg:hidden">
           <button onClick={() => setMenuOpen(true)} aria-label="Open menu" className="rounded-md p-2 hover:bg-surface-2"><Menu className="size-5" /></button>
-          <span className="truncate font-semibold">{business.name}</span>
-          <div className="w-9"><SyncStatus businessId={business.id} compact /></div>
+          <span className="truncate font-semibold">{settings.business_name}</span>
         </header>
         {menuOpen && (
           <div className="fixed inset-0 z-40 lg:hidden">

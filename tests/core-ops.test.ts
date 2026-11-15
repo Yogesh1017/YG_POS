@@ -1,10 +1,10 @@
-import { copyFileSync, existsSync, mkdtempSync, readdirSync, writeFileSync, truncateSync, statSync } from "node:fs";
+import { closeSync, copyFileSync, existsSync, mkdtempSync, openSync, readdirSync, statSync, truncateSync, writeFileSync, writeSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { backupNow, createCore, inspectBackup, prune, restoreBackup } from "../desktop/core";
 import { MIGRATIONS } from "../desktop/core/migrations";
-import { C4, Q, R, addStock, checkBooks, cup, customer, newShop, product, ref, stockOf, supplier } from "./helpers";
+import { C4, Q, R, addStock, checkBooks, cup, customer, newShop, ref, stockOf, supplier } from "./helpers";
 
 const line = (p: any, unit: number, qty: number, price: number) => ({ product_id: p.id, unit_id: unit, qty_m: Q(qty), unit_price: R(price) });
 const TODAY = "2026-11-16";
@@ -218,9 +218,9 @@ describe("backup, verification and restore", () => {
     const damaged = path.join(shop.dir, "damaged.db"), cut = path.join(shop.dir, "cut.db"), text = path.join(shop.dir, "notes.db"), other = path.join(shop.dir, "other.db");
     copyFileSync(good, damaged);
     const size = statSync(damaged).size;
-    const fd = require("node:fs").openSync(damaged, "r+");
-    require("node:fs").writeSync(fd, Buffer.alloc(8192, 0xab), 0, 8192, Math.floor(size / 2));
-    require("node:fs").closeSync(fd);
+    const fd = openSync(damaged, "r+");
+    writeSync(fd, Buffer.alloc(8192, 0xab), 0, 8192, Math.floor(size / 2));
+    closeSync(fd);
     copyFileSync(good, cut); truncateSync(cut, 5000);
     writeFileSync(text, "this is not a database");
     createCore({ dataDir: mkdtempSync(path.join(tmpdir(), "ygpos-x-")) }).db.exec(`vacuum into '${other}'`);
@@ -318,9 +318,9 @@ describe("backup, verification and restore", () => {
     expect(again.db.get<any>("select invoice_no from sales")!.invoice_no).toBe("INV/26-27/1");
     again.close();
     const file = path.join(shop.dir, "ygpos.db");
-    const fd = require("node:fs").openSync(file, "r+");
-    require("node:fs").writeSync(fd, Buffer.alloc(20000, 0x5a), 0, 20000, 4096);
-    require("node:fs").closeSync(fd);
+    const fd = openSync(file, "r+");
+    writeSync(fd, Buffer.alloc(20000, 0x5a), 0, 20000, 4096);
+    closeSync(fd);
     expect(() => createCore({ dataDir: shop.dir })).toThrow();
   });
 });

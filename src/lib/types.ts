@@ -1,137 +1,49 @@
-import type { LineAmounts, SaleTotals } from "./tax";
-
+// Shapes returned by the core. Flags are 0/1; money is paise; *_m quantities are thousandths.
 export type Role = "owner" | "manager" | "cashier";
-export type PaymentMethod = "cash" | "upi" | "card" | "other";
-export type StockReason =
-  | "opening" | "stock_in" | "sale" | "sale_cancel" | "sale_return" | "adjustment" | "damage" | "expiry";
+export type Method = "cash" | "upi" | "card" | "bank" | "cheque" | "other";
+export const METHOD_LABELS: Record<Method, string> = { cash: "Cash", upi: "UPI", card: "Card", bank: "Bank transfer", cheque: "Cheque", other: "Other" };
 
-export interface Business {
-  id: string;
-  name: string;
-  legal_name: string | null;
-  phone: string | null;
-  email: string | null;
-  address: string | null;
-  city: string | null;
-  pincode: string | null;
-  state_code: string | null;
-  gst_registered: boolean;
-  gstin: string | null;
-  default_tax_rate: number;
-  prices_include_tax: boolean;
-  round_off_total: boolean;
-  invoice_prefix: string;
-  receipt_footer: string | null;
+export interface User { id: number; username: string; display_name: string; role: Role; is_active?: number }
+export interface Settings {
+  business_name: string; legal_name: string | null; phone: string | null; email: string | null; address: string | null; city: string | null; pincode: string | null;
+  state_code: string | null; gst_registered: number; gstin: string | null; default_tax_rate_bp: number; prices_include_tax: number; round_off_total: number;
+  invoice_prefix: string; invoice_terms: string | null; bank_details: string | null; receipt_footer: string | null; setup_complete: number;
 }
-
-export interface Member {
-  business_id: string;
-  user_id: string;
-  role: Role;
-  display_name: string;
-  email: string;
-  is_active: boolean;
+export interface Tier { min_qty_m: number; price: number }
+export interface Unit {
+  id: number; product_id: number; name: string; factor_m: number; sale_price: number; is_base: number;
+  is_default_sale: number; is_default_purchase: number; is_active: number; tiers: Tier[];
 }
-
-export interface Category {
-  id: string;
-  business_id: string;
-  name: string;
-}
-
 export interface Product {
-  id: string;
-  business_id: string;
-  category_id: string | null;
-  name: string;
-  sku: string | null;
-  barcode: string | null;
-  hsn_code: string | null;
-  unit: string;
-  sale_price: number;
-  purchase_price: number;
-  tax_rate: number;
-  price_includes_tax: boolean;
-  track_stock: boolean;
-  stock_qty: number;
-  low_stock_threshold: number;
-  description: string | null;
-  is_active: boolean;
+  id: number; name: string; brand_id: number | null; category_id: number | null; brand_name: string | null; category_name: string | null;
+  flavour: string | null; pack_size: string | null; sku: string | null; barcode: string | null; hsn_code: string | null;
+  tax_rate_bp: number; price_includes_tax: number; base_unit: string; qty_decimals: 0 | 3; track_expiry: number; low_stock_m: number;
+  cost4: number; shortfall_m: number; description: string | null; is_active: number;
+  on_hand_m: number; expired_m: number; sellable_m: number; units: Unit[];
 }
-
+export interface Named { id: number; name: string }
 export interface Customer {
-  id: string;
-  business_id: string;
-  name: string;
-  phone: string | null;
-  gstin: string | null;
-  state_code: string | null;
-  address: string | null;
-  balance: number;
+  id: number; name: string; contact_person: string | null; phone: string | null; gstin: string | null; state_code: string | null; address: string | null; city: string | null;
+  notes: string | null; credit_limit: number | null; opening_balance: number; opening_due: number; balance: number; is_active: number;
 }
-
-/** What the create_sale() database function accepts. Decimal values travel as strings. */
-export interface SalePayload {
-  id: string;
-  business_id: string;
-  sold_at: string;
-  customer_id: string | null;
-  customer_name: string | null;
-  customer_phone: string | null;
-  customer_gstin: string | null;
-  place_of_supply: string | null;
-  note: string | null;
-  client_total: string;
-  items: {
-    product_id: string;
-    qty: string;
-    unit_price: string;
-    discount: string;
-    tax_rate: string;
-    price_includes_tax: boolean;
-  }[];
-  payments: { method: PaymentMethod; amount: string; reference: string | null }[];
+export interface Supplier {
+  id: number; name: string; contact_person: string | null; phone: string | null; gstin: string | null; state_code: string | null; address: string | null;
+  notes: string | null; opening_balance: number; opening_due: number; balance: number; is_active: number;
 }
-
-/** Everything needed to show or print a bill, whether it came from this device or the server. */
-export interface InvoiceData {
-  id: string;
-  invoiceNo: string | null;
-  status: "completed" | "cancelled";
-  soldAt: string;
-  cashier: string | null;
-  customer: { name: string | null; phone: string | null; gstin: string | null };
-  placeOfSupply: string | null;
-  interstate: boolean;
-  lines: {
-    name: string;
-    hsn: string | null;
-    unit: string;
-    qtyMilli: number;
-    unitPricePaise: number;
-    taxRateBp: number;
-    amounts: LineAmounts;
-  }[];
-  totals: Omit<SaleTotals, "lines">;
-  payments: { method: PaymentMethod; amountPaise: number }[];
-  paidPaise: number;
-  duePaise: number;
-  /** Cash handed over and change returned — known only on the device that made the sale. */
-  tenderedPaise?: number;
-  changePaise?: number;
-  note: string | null;
+export interface SaleItem {
+  id: number; line_no: number; product_id: number; unit_id: number; name: string; unit_name: string; factor_m: number; hsn_code: string | null;
+  qty_m: number; base_qty_m: number; unit_price: number; list_price: number; price_source: string; price_includes_tax: number;
+  gross: number; discount: number; tax_rate_bp: number; taxable: number; cgst: number; sgst: number; igst: number; line_total: number; cost_total: number; returned_base_m: number;
 }
-
-/** A sale made on this device. Kept in IndexedDB until the server confirms it (and a while after). */
-export interface LocalSale {
-  id: string;
-  business_id: string;
-  status: "pending" | "synced" | "failed";
-  sold_at: string;
-  payload: SalePayload;
-  invoice: InvoiceData;
-  invoice_no: string | null;
-  error: string | null;
-  attempts: number;
-  synced_at: string | null;
+export interface Payment { id: number; kind: string; method: Method; amount: number; reference: string | null; paid_on: string; note: string | null }
+export interface SaleReturn { id: number; credit_note_no: string; reason: string | null; total: number; taxable_total: number; tax_total: number; due_reduced: number; refund_paid: number; refund_method: Method | null; returned_on: string }
+export interface Sale {
+  id: number; invoice_no: string; status: "completed" | "cancelled"; customer_id: number | null; customer_name: string | null; customer_phone: string | null;
+  customer_gstin: string | null; customer_address: string | null; place_of_supply: string | null; is_interstate: number;
+  gross_total: number; discount_total: number; taxable_total: number; cgst_total: number; sgst_total: number; igst_total: number; tax_total: number;
+  round_off: number; grand_total: number; paid_total: number; due_amount: number; returned_total: number; note: string | null; sold_on: string; sold_at: string;
+  cashier: string | null; cancelled_at: string | null; cancel_reason: string | null;
+  items: SaleItem[]; payments: Payment[]; returns: SaleReturn[];
 }
+export interface LedgerEntry { date: string; type: string; ref: string; debit: number; credit: number; balance: number }
+export interface Ledger { opening: number; closing: number; entries: LedgerEntry[] }

@@ -7,8 +7,8 @@ const eslintConfig = defineConfig([
   ...nextTs,
   {
     rules: {
-      // This app is client-rendered and loads data from Supabase / IndexedDB inside effects
-      // (there is no server data layer), so the "no setState in an effect" rule does not fit.
+      // This app is client-rendered and loads data from the local core inside effects
+      // (the data lives in the desktop core), so the "no setState in an effect" rule does not fit.
       "react-hooks/set-state-in-effect": "off",
     },
   },
@@ -19,6 +19,9 @@ const eslintConfig = defineConfig([
     ".next/**",
     "out/**",
     "build/**",
+    "archive/**",
+    "dist-desktop/**",
+    "release/**",
     "next-env.d.ts",
   ]),
 ]);

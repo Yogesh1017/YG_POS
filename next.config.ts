@@ -1,8 +1,7 @@
 import type { NextConfig } from "next";
 
-// The app is exported as static files: every screen is client-rendered and talks to
-// Supabase directly (RLS + RPC). No Node server is needed at runtime, which is what lets
-// the service worker serve the whole app while the shop is offline.
+// The interface is exported as static files and shown inside the desktop app. Every screen is
+// client-rendered and talks to the local core; there is no web server and nothing online.
 const nextConfig: NextConfig = {
   output: "export",
   trailingSlash: true,
