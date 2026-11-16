@@ -35,8 +35,8 @@ export const zBool = zFlag.transform((b) => (b ? 1 : 0));
 export const zMethod = z.enum(["cash", "upi", "card", "bank", "cheque", "other"]);
 export const zRef = z.string().min(8).max(64);
 export const GSTIN_RE = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/;
-export const zGstin = z.string().trim().toUpperCase().nullish()
-  .transform((v) => (v ? v : null))
+export const zGstin = z.string().nullish()
+  .transform((v) => (v ? v.toUpperCase().replace(/[^0-9A-Z]/g, "") || null : null))
   .refine((v) => v === null || isValidGstin(v), "This GSTIN is not valid — check each character");
 export const zState = z.string().regex(/^\d{2}$/).nullish().transform((v) => (v ? v : null));
 /** Boolean with a default, stored as 0/1. */

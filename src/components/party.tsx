@@ -5,7 +5,7 @@ import { useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import { StatementA4 } from "@/components/documents";
 import { usePrinter } from "@/components/sale-actions";
-import { Button, Checkbox, Dialog, ErrorNote, Field, Input, Select, Spinner, td, th } from "@/components/ui";
+import { GstinInput, Button, Checkbox, Dialog, ErrorNote, Field, Input, Select, Spinner, td, th } from "@/components/ui";
 import { api, errorText, formatDate, newRef, today, useApi } from "@/lib/api";
 import { GST_STATES } from "@/lib/gst";
 import { formatINR, formatPaise, paiseToDecimal, parseRupees } from "@/lib/money";
@@ -53,7 +53,7 @@ export function PartyDialog({ kind, party, onClose, onSaved }: { kind: Kind; par
         <Field label={isCustomer ? "Shop / business name" : "Supplier name"} className="sm:col-span-3">{(p) => <Input {...p} autoFocus value={v.name} onChange={(e) => set("name", e.target.value)} />}</Field>
         <Field label="Contact person" className="sm:col-span-3">{(p) => <Input {...p} value={v.contact_person} onChange={(e) => set("contact_person", e.target.value)} />}</Field>
         <Field label="Phone" className="sm:col-span-2">{(p) => <Input {...p} inputMode="tel" value={v.phone} onChange={(e) => set("phone", e.target.value)} />}</Field>
-        {gst && <Field label="GSTIN" className="sm:col-span-2">{(p) => <Input {...p} className="num uppercase" maxLength={15} value={v.gstin} onChange={(e) => set("gstin", e.target.value.toUpperCase())} />}</Field>}
+        {gst && <Field label="GSTIN" className="sm:col-span-2">{(p) => <GstinInput {...p} value={v.gstin} onChange={(g) => set("gstin", g)} />}</Field>}
         {gst && <Field label="State" hint={isCustomer ? "Another state = IGST on their invoices." : undefined} className="sm:col-span-2">{(p) => (
           <Select {...p} value={v.state_code} onChange={(e) => set("state_code", e.target.value)}><option value="">Same as ours</option>{GST_STATES.map((s) => <option key={s.code} value={s.code}>{s.name}</option>)}</Select>
         )}</Field>}

@@ -12,7 +12,7 @@ export const zBusiness = z.object({
   pincode: zOptText(6).refine((v) => v === null || /^[1-9][0-9]{5}$/.test(v), "PIN code has 6 digits"),
   state_code: zState,
   gst_registered: zBool,
-  gstin: zOptText(15).transform((v) => (v ? v.toUpperCase() : null)),
+  gstin: zOptText(40).transform((v) => (v ? v.toUpperCase().replace(/[^0-9A-Z]/g, "") || null : null)),
   default_tax_rate_bp: z.number().int().min(0).max(10000).default(0),
   prices_include_tax: zBoolD(false),
   round_off_total: zBoolD(true),

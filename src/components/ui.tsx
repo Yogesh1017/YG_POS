@@ -44,6 +44,18 @@ const fieldBase =
 export function Input({ className, ...rest }: ComponentProps<"input">) {
   return <input className={cn(fieldBase, className)} {...rest} />;
 }
+/** Keeps only the letters and digits of a GSTIN, in capitals. Spaces, dashes and stray characters from pasting are dropped. */
+export const cleanGstin = (text: string): string => text.toUpperCase().replace(/[^0-9A-Z]/g, "").slice(0, 15);
+
+/** GSTIN box: accepts typing or pasting with spaces, and shows how many of the 15 characters are in. */
+export function GstinInput({ value, onChange, className, ...rest }: Omit<ComponentProps<"input">, "value" | "onChange"> & { value: string; onChange: (gstin: string) => void }) {
+  return (
+    <div className="relative">
+      <input className={cn(fieldBase, "num pr-14 uppercase", className)} autoComplete="off" spellCheck={false} value={value} onChange={(e) => onChange(cleanGstin(e.target.value))} {...rest} />
+      <span aria-hidden className={cn("num pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-xs", value.length === 15 ? "text-primary" : "text-muted")}>{value.length}/15</span>
+    </div>
+  );
+}
 export function Select({ className, children, ...rest }: ComponentProps<"select">) {
   return (
     <select className={cn(fieldBase, "pr-8", className)} {...rest}>

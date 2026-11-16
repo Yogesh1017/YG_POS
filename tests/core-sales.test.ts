@@ -50,6 +50,9 @@ describe("first-run setup, sign-in and roles", () => {
     expect(shop.fail(shop.owner, "settings.update", { ...base, gstin: "BAD" }).message).toMatch(/valid 15-character GSTIN/);
     expect(shop.fail(shop.owner, "settings.update", { ...base, gstin: "27AAPFU0939F1ZA" }).message).toMatch(/valid 15-character GSTIN/);   // wrong check digit
     expect(shop.fail(shop.owner, "customers.save", { name: "X", gstin: "27AAPFU0939F1ZA" }).message).toMatch(/GSTIN is not valid/);
+    // spaces and lower case from typing or pasting are tolerated; all 15 characters are kept
+    expect(shop.ok<any>(shop.owner, "settings.update", { ...base, gstin: " 27aapfu0939f1zv " }).gstin).toBe("27AAPFU0939F1ZV");
+    expect(shop.ok<any>(shop.owner, "customers.save", { name: "Spaced", gstin: "27 AAPFU 0939 F1ZV" }).gstin).toBe("27AAPFU0939F1ZV");
     expect(shop.ok<any>(shop.owner, "settings.update", { business_name: "No GST Shop", gst_registered: false }).gst_registered).toBe(0);
   });
 });

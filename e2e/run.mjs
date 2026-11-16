@@ -100,7 +100,9 @@ await step("first run opens setup, creates the owner and business, and shows a r
   await page.getByRole("button", { name: "Create and continue" }).click();
   await page.getByText("valid 15-character GSTIN").waitFor();
   expect(Number(one("select count(*) from users")) === 0, "nothing saved on a rejected setup");
-  await L("GSTIN").fill("27AAPFU0939F1ZV");
+  await L("GSTIN").fill(" 27aapfu 0939f1zv");                     // pasted with spaces and in lower case
+  eq(await L("GSTIN").inputValue(), "27AAPFU0939F1ZV", "all 15 characters kept");
+  await page.getByText("15/15").waitFor();
   await page.getByRole("button", { name: "Create and continue" }).click();
   const key = await page.getByTestId("recovery-key").innerText();
   expect(/^[0-9A-F]{4}(-[0-9A-F]{4}){4}$/.test(key), `recovery key shown (${key})`);

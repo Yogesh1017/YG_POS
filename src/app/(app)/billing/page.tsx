@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } fro
 import { toast } from "sonner";
 import { Combo, ProductCombo, productLabel } from "@/components/pickers";
 import { SalePrintButtons } from "@/components/sale-actions";
-import { Badge, Button, Dialog, Field, Input, Select, Spinner, cn } from "@/components/ui";
+import { GstinInput, Badge, Button, Dialog, Field, Input, Select, Spinner, cn } from "@/components/ui";
 import { ApiError, api, errorText, formatDate, newRef, useApi } from "@/lib/api";
 import { formatINR, formatPaise, paiseToDecimal, parseQty, parseRupees } from "@/lib/money";
 import { resolvePrice, type PriceSource } from "@/lib/pricing";
@@ -384,7 +384,7 @@ function QuickCustomer({ initial, onClose, onSaved }: { initial: string; onClose
       <form onSubmit={submit} className="grid gap-4 sm:grid-cols-2">
         <Field label="Shop / business name" className="sm:col-span-2">{(p) => <Input {...p} autoFocus value={name} onChange={(e) => setName(e.target.value)} />}</Field>
         <Field label="Phone">{(p) => <Input {...p} inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />}</Field>
-        <Field label="GSTIN (optional)">{(p) => <Input {...p} className="num uppercase" maxLength={15} value={gstin} onChange={(e) => setGstin(e.target.value.toUpperCase())} />}</Field>
+        <Field label="GSTIN (optional)">{(p) => <GstinInput {...p} value={gstin} onChange={setGstin} />}</Field>
         <p className="text-xs text-muted sm:col-span-2">Address, credit limit and special prices can be added later under Customers.</p>
         <div className="flex justify-end gap-2 sm:col-span-2"><Button onClick={onClose}>Cancel</Button><Button type="submit" variant="primary" loading={busy}>Save and select</Button></div>
       </form>

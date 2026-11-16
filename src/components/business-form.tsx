@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { Checkbox, Field, Input, Select, Textarea } from "@/components/ui";
+import { GstinInput, Checkbox, Field, Input, Select, Textarea } from "@/components/ui";
 import { GST_STATES } from "@/lib/gst";
 import type { Settings } from "@/lib/types";
 
@@ -50,7 +50,7 @@ export function BusinessFields({ v, set, full }: { v: BusinessValues; set: <K ex
         <Checkbox label="This business is registered for GST" hint="Leave off if you have no GSTIN. Invoices will then carry no tax." checked={v.gst_registered} onChange={(e) => set("gst_registered", e.target.checked)} />
         {v.gst_registered && (
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="GSTIN">{(p) => <Input {...p} className="num uppercase" maxLength={15} value={v.gstin} onChange={(e) => set("gstin", e.target.value.toUpperCase())} />}</Field>
+            <Field label="GSTIN">{(p) => <GstinInput {...p} value={v.gstin} onChange={(g) => set("gstin", g)} />}</Field>
             <Field label="Legal name (as on GST certificate)">{(p) => <Input {...p} value={v.legal_name} onChange={(e) => set("legal_name", e.target.value)} />}</Field>
             <Field label="Usual GST rate for new products (%)" hint="Each product has its own rate; confirm rates with your accountant.">{(p) => <Input {...p} className="num" inputMode="decimal" value={v.default_tax_rate} onChange={(e) => set("default_tax_rate", e.target.value)} />}</Field>
             <div className="flex items-center"><Checkbox label="My rates already include GST" hint="Off = rates are before GST and GST is added on the invoice (usual for wholesale)." checked={v.prices_include_tax} onChange={(e) => set("prices_include_tax", e.target.checked)} /></div>
