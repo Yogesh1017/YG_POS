@@ -1,10 +1,12 @@
 # Changelog
 
-## Unreleased
+## 1.0.1 — 2026-11-20
 
 ### Changed
 - GSTIN boxes drop spaces and pasted characters and show a 15-character count.
 - README rewritten for visitors, with screenshots (demo data only).
+- Installers are now published as GitHub Releases.
+- Released under the MIT license.
 
 ## 1.0.0 — 2026-11-15
 

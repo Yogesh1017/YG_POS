@@ -176,6 +176,6 @@ desktop/core/      schema (migrations.ts) and services: auth, catalog, stock, sa
 desktop/           main.ts (Electron), preload.ts, server.ts (request handler), dev-server.ts
 src/app/           screens      src/components/  shared UI, documents, pickers      src/lib/  api client, arithmetic
 tests/             core tests (Vitest)          e2e/  browser and desktop-shell tests
-scripts/           desktop bundler             .github/workflows/  Windows test + installer build
+scripts/           desktop bundler             .github/workflows/  Windows tests and installer build; releases
 archive/           the previous web/Supabase version, unused
 ```

@@ -49,7 +49,7 @@ process payments: cash, UPI, card and bank payments are recorded, not collected.
 
 ## Status
 
-Version 1.0.0, in daily use by the business it was built for.
+In daily use by the business it was built for. See [CHANGELOG.md](CHANGELOG.md) for versions.
 
 - All business rules, the interface and the desktop app are covered by automated tests, which run
   on Windows and Linux for every change.
@@ -67,11 +67,13 @@ returns to suppliers, customer advance payments.
 
 Windows 10 or 11, 64-bit.
 
-1. Sign in to GitHub, open the **Actions** tab, and choose the latest successful **Windows build**
-   run on `main`.
-2. Under **Artifacts**, download **YG-POS-Windows-Installer** and unzip it. (GitHub only lets
-   signed-in users download these, and keeps them for 90 days.)
-3. Run `YG-POS-Setup-1.0.0.exe`. At the "unknown publisher" warning choose **More info → Run anyway**.
+1. Open the [latest release](https://github.com/Yogesh1017/YG_POS/releases/latest) and download
+   `YG-POS-Setup-<version>.exe`.
+2. Run it. The installer is not code-signed, so Windows shows an "unknown publisher" warning:
+   choose **More info → Run anyway**.
+
+Installing a newer version over an older one keeps all data. Each release also lists a SHA-256
+checksum (`SHA256SUMS.txt`) for checking the download.
 
 ### First run
 
@@ -129,6 +131,13 @@ Build the Windows installer (on Windows):
 npm run dist
 ```
 
+### Publishing a release
+
+1. Set the new version in `package.json` and add a matching `## <version>` section to `CHANGELOG.md`.
+2. Merge to `main`.
+3. On GitHub: **Actions → Release → Run workflow** (on `main`). It runs the tests, builds the
+   installer on Windows, and publishes it as a release using that changelog section as the notes.
+
 ### Tests
 
 ```bash
@@ -184,5 +193,6 @@ then rebuilt as the offline wholesale desktop app you see here. The first versio
 
 ## License
 
-No license has been chosen for this repository yet. Under copyright law that means you may read
-the code here, but you may not copy, modify or redistribute it without the owner's permission.
+[MIT](LICENSE). You may use, change and share this software, including commercially, as long as
+the copyright and license notice are kept. It comes with no warranty — in particular, check its GST
+handling with a tax professional before relying on it.

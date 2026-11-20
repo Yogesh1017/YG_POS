@@ -1,0 +1,64 @@
+# Publishes a GitHub Release with the Windows installer, so anyone can download it from the
+# repository's Releases page without signing in, and it never expires.
+#
+# To release: set the new version in package.json, add a matching "## <version>" section to
+# CHANGELOG.md, merge to main, then Actions -> Release -> Run workflow (on main).
+name: Release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    if: github.ref == 'refs/heads/main'
+    runs-on: windows-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Check the version is new and has release notes
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          v=$(node -p "require('./package.json').version")
+          echo "VERSION=$v" >> "$GITHUB_ENV"
+          if gh release view "v$v" >/dev/null 2>&1; then
+            echo "::error::Release v$v already exists. Set a new version in package.json first."; exit 1
+          fi
+          awk -v v="$v" '/^## /{p=($2==v); next} p' CHANGELOG.md > notes.md
+          if [ ! -s notes.md ]; then
+            echo "::error::CHANGELOG.md has no '## $v' section."; exit 1
+          fi
+      - name: Unit and database tests
+        run: npm test
+      - name: Build
+        run: npm run build
+      - name: Build Windows installer
+        run: npx electron-builder --win nsis --x64 --publish never
+      - name: Publish the release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd release
+          exe="YG-POS-Setup-$VERSION.exe"
+          sha256sum "$exe" > SHA256SUMS.txt
+          {
+            echo "## Install"
+            echo
+            echo "Windows 10 or 11, 64-bit. Download **$exe** below and run it. The installer is not"
+            echo "code-signed, so Windows shows an \"unknown publisher\" warning: choose **More info → Run anyway**."
+            echo "Updating over an existing installation keeps all data."
+            echo
+            echo "## Changes"
+            cat ../notes.md
+          } > ../release-notes.md
+          gh release create "v$VERSION" "$exe" SHA256SUMS.txt --target "$GITHUB_SHA" --title "YG POS $VERSION" --notes-file ../release-notes.md

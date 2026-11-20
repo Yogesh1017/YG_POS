@@ -83,7 +83,7 @@ kept as an archived reference.
 ## Possible next steps
 
 In order of likely value: product import from Excel, purchase returns, customer advance payments,
-GST export for the accountant, a code-signed installer published as a GitHub Release.
+GST export for the accountant, a code-signed installer.
 
 ## Risks that remain
 
