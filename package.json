@@ -1,6 +1,6 @@
 {
   "name": "yg-pos",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -46,6 +46,7 @@
   },
   "description": "Offline wholesale billing and stock for a single Windows computer",
   "author": "YG POS",
+  "license": "MIT",
   "main": "dist-desktop/main.js",
   "build": {
     "appId": "in.ygpos.desktop",
