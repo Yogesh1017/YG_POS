@@ -6,7 +6,7 @@ One Windows billing computer · fully offline · desktop application · local SQ
 only source of truth · no Supabase, Vercel, internet, cloud sync or LAN · the earlier web version
 kept as an archived reference.
 
-## Decisions taken (defaults you approved)
+## Decisions taken for the business this was built for
 
 | Topic | Decision |
 | --- | --- |
@@ -77,16 +77,13 @@ kept as an archived reference.
 
 **Delivery**
 - ✅ Desktop shell tested on Linux; Windows tests and installer build run on GitHub Actions
-- ⬜ Verified on the target PC and printers (needs you)
+- ✅ Trial run by the owner on the billing PC
 - ⬜ Code-signed installer
 
-## Suggested next steps
+## Possible next steps
 
-1. Install on the billing PC, enter real products and a few customers, bill for a day alongside the
-   current method, print on both printers.
-2. Report anything awkward in the invoice screen — it is the part used most.
-3. Then, in order of likely value: product import from Excel, purchase returns, customer advance
-   payments, GST export for the accountant.
+In order of likely value: product import from Excel, purchase returns, customer advance payments,
+GST export for the accountant, a code-signed installer published as a GitHub Release.
 
 ## Risks that remain
 

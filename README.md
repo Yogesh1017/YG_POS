@@ -1,105 +1,112 @@
 # YG POS
 
-Wholesale billing, stock and accounts for an ice cream distribution business, as an offline
-Windows desktop application. Everything runs on one computer. All data is kept in a local SQLite
-database file on that computer. No internet, cloud service, network or account is needed for
-any part of normal use.
+**Offline billing, stock and accounts software for a wholesale ice cream distributor in India.**
 
-**Status: version 1.0.0.** The business logic, the interface and the desktop shell are covered by
-automated tests (see [Testing](#testing)), which pass on Linux. Before relying on it, read
-[What has and has not been verified](#what-has-and-has-not-been-verified): the app has not yet been
-run on your Windows PC or with your printers.
+YG POS is a Windows desktop application. It runs entirely on one computer and keeps all of its
+data in a local database file. It needs no internet connection, no server and no online account.
 
-## What it does
+It was built for one real business (a single billing computer, wholesale customers, GST
+invoices) and is shared here so others can see how it works and learn from it.
 
-| Area | Details |
+![The invoice screen: customer, product, packing unit, quantity, rate, and a live GST total](docs/screenshots/billing.png)
+
+## Who it is for
+
+Wholesale distributors who:
+
+- sell the same product in several packings (piece, box, carton) and need stock to stay correct
+  whichever one they sell;
+- give customers credit and need to know who owes what;
+- issue GST tax invoices;
+- want billing to keep working when the internet is down — because it never needs it.
+
+It is **not** a supermarket checkout, an online store, or a multi-branch system. It does not
+process payments: cash, UPI, card and bank payments are recorded, not collected.
+
+## Features
+
+| Area | What it does |
 | --- | --- |
-| Invoices | Keyboard-first wholesale billing: customer, product search, unit, quantity, rate, discount. Final invoice number at once (`INV/26-27/1`). A4 tax invoice, thermal receipt, PDF file |
-| Packing units | Each product has one smallest unit (piece, cup, kg…). Boxes, cartons and cases are conversions of it, set per product. Selling 2 cartons of 12 boxes × 10 pieces takes 240 pieces from stock |
-| Pricing | A rate per unit, quantity prices ("5 cartons or more"), special rates per customer, and hand-typed rates that need an owner or manager |
-| Customers | Credit sales, part payments, credit limits, opening balances, ledger with running balance, printable statement |
-| Stock | Batches with expiry dates, earliest-expiry-first selling, expired stock blocked from sale, write-offs for damaged / melted / expired, stock counts, movement history |
-| Purchases | Supplier bills add stock with batch, expiry and real cost; supplier balances, payments and ledger |
-| Returns | Cancel an invoice, or return part of it (even part of a carton) against a credit note; returned goods go back to stock or to wastage |
-| GST | Optional. GSTIN, CGST/SGST or IGST by customer state, a rate and HSN per product, rates before or including GST |
-| Reports | Sales and profit (revenue, gross profit, wastage, expenses, net profit), by product, by customer, purchases, wastage, outstanding, stock value, GST summary, invoice register. CSV export |
-| Users | Owner, manager, cashier — enforced inside the app's core, with an audit log |
-| Safety | Automatic verified backups in two locations, restore with a safety copy, crash-safe database |
+| **Invoices** | Keyboard-first wholesale invoice screen. Pick the customer, type a product, choose box or carton, enter the quantity. Final invoice number at once (`INV/26-27/1`), restarting each financial year |
+| **Packing units** | Each product is counted in its smallest unit (piece, cup, kg…). Boxes and cartons are set per product, e.g. 1 carton = 12 boxes = 120 pieces. Selling 2 cartons takes 240 pieces from stock |
+| **Pricing** | A rate per packing unit, quantity prices ("₹1,050 a carton from 5 cartons"), special rates per customer. A hand-typed rate needs an owner or manager |
+| **Customer credit** | Paid, part-paid and credit invoices; credit limits; opening balances; payments applied to the oldest dues first; a ledger and printable statement per customer |
+| **Stock** | Batches with expiry dates, oldest expiry sold first, expired stock blocked from sale; write-offs for damaged, melted and expired goods; stock counts and full history |
+| **Purchases** | Supplier bills add stock with batch, expiry and true cost; supplier balances, payments and ledgers |
+| **Returns** | Cancel an invoice, or return part of it — even part of a carton — against a credit note. Returned goods go back on sale or into wastage |
+| **GST** | Optional. GSTIN with check-digit validation, CGST + SGST or IGST by customer state, a rate and HSN code per product, rates before or including GST |
+| **Printing** | A4 tax invoice (with amount in words), 58/80 mm thermal receipt, PDF export, choice of printer |
+| **Reports** | Revenue, gross profit, wastage, expenses and net profit; sales by product and customer; purchases; who owes what; stock value; GST summary by rate and HSN; invoice number register; CSV export |
+| **Users** | Owner, manager and cashier logins with different permissions, and an audit log |
+| **Backups** | Automatic, verified backups to the computer and to a second drive; restore in a few clicks, with a safety copy of the data being replaced |
 
-Not included: payment gateways or any online payment (payment methods are recorded only),
-e-invoicing and e-way bills, the GST composition scheme, purchase returns to suppliers, product
-import from Excel, freezer-wise stock, free-goods schemes (enter a line at rate 0 instead), and
-advance payments from customers. The older web version is kept, unused, in `archive/`.
+| | |
+| --- | --- |
+| ![A4 tax invoice](docs/screenshots/invoice-a4.png) | ![Profit report](docs/screenshots/reports.png) |
+| ![Products with packing units and rates](docs/screenshots/products.png) | ![Customer ledger](docs/screenshots/ledger.png) |
 
-## Install on the billing computer
+*Screenshots use made-up demo data.*
 
-1. On GitHub, open the repository's **Actions** tab, then the latest successful **Windows build** run.
-2. Under **Artifacts**, download **YG-POS-Windows-Installer** and unzip it.
-3. Run `YG-POS-Setup-1.0.0.exe`. Windows will warn that the publisher is unknown, because the
-   installer is not code-signed: choose **More info → Run anyway**.
-4. Open **YG POS** from the desktop shortcut.
+## Status
 
-Requirements: Windows 10 or 11, 64-bit.
+Version 1.0.0, in daily use by the business it was built for.
+
+- All business rules, the interface and the desktop app are covered by automated tests, which run
+  on Windows and Linux for every change.
+- **The GST handling has not been reviewed or certified by a tax professional.** If you use it,
+  have your accountant check an invoice and the GST report. E-invoicing, e-way bills and the
+  composition scheme are not supported.
+- The Windows installer is not code-signed, so Windows shows an "unknown publisher" warning.
+
+Not included: online payments, multiple branches, freezer-wise stock, product import from Excel,
+returns to suppliers, customer advance payments.
+
+## Trying it
+
+### Install on Windows
+
+Windows 10 or 11, 64-bit.
+
+1. Sign in to GitHub, open the **Actions** tab, and choose the latest successful **Windows build**
+   run on `main`.
+2. Under **Artifacts**, download **YG-POS-Windows-Installer** and unzip it. (GitHub only lets
+   signed-in users download these, and keeps them for 90 days.)
+3. Run `YG-POS-Setup-1.0.0.exe`. At the "unknown publisher" warning choose **More info → Run anyway**.
 
 ### First run
 
-1. Create the owner login and enter the business details. Tick GST only if you have a GSTIN.
-2. **Write down the recovery key** that is shown. It is the only way to reset a forgotten owner password.
+1. Create the owner login and enter the business details. Tick GST only if the business has a GSTIN.
+2. **Write down the recovery key** shown next. It is the only way to reset a forgotten owner password.
 3. **Settings → Backup and restore:** choose a second backup location on a USB or external drive.
-   The app keeps warning until this is done.
-4. **Settings → Printing:** choose the A4 and thermal printers (install them in Windows first).
+4. **Settings → Printing:** pick the A4 and thermal printers (install them in Windows first).
 5. **Settings → Users:** add logins for staff.
-6. **Products:** add brands, then each product with its packing and rates. Enter stock in hand as
-   opening stock, or enter supplier bills under **Purchases**.
-7. **Customers / Suppliers:** add them, with any balance already outstanding as the opening balance.
+6. Add products with their packing and rates, then customers and suppliers. Enter existing stock
+   and balances as opening figures.
 
-### Everyday keys
+### Keyboard
 
 | Key | Does |
 | --- | --- |
-| F1 | New invoice, from anywhere |
+| F1 | New invoice, from any screen |
 | F3 | Customer box |
-| F2 | Product search (also accepts a barcode scan) |
-| Enter | Pick the highlighted product; then in the quantity box, go back to product search |
+| F2 | Product search (a barcode scanner works here too) |
+| Enter | Add the highlighted product; from the quantity box, back to product search |
 | Tab | Move across quantity, rate and discount |
 | F9 or Ctrl+Enter | Save the invoice |
 
-## Where the data is
+### Where the data lives
 
-- Database: `%APPDATA%\YG POS\data\ygpos.db` (Help → Open data folder).
-- Backups: the `backups` folder beside it, plus the second location you chose.
-- Uninstalling the app does not delete this folder.
+- Database: `%APPDATA%\YG POS\data\ygpos.db` (also reachable from **Help → Open data folder**).
+- Backups: the `backups` folder beside it, and the second location chosen in Settings.
+- Uninstalling the app does not delete the data.
 
-Backups are taken when the app opens, every two hours while open, and when it closes. Each backup
-is reopened and checked after it is written. See [ARCHITECTURE.md](ARCHITECTURE.md#backup-and-recovery)
-for the recovery steps, including moving to a new computer.
+Backups are taken when the app opens, every two hours while it is open, and when it closes. Each
+one is checked after it is written. [ARCHITECTURE.md](ARCHITECTURE.md#backup-and-recovery)
+explains restoring, including moving to a new computer.
 
-## What has and has not been verified
+## Building from source
 
-Verified by automated tests on Linux (all passing):
-
-- 60 unit and database tests of the core: unit conversion, pricing, GST, invoice numbering, credit,
-  ledgers, stock and batches, purchases, returns, reports, backup and restore.
-- A 19-step browser test of the whole workflow against a real database, including a hard kill of
-  the app mid-use and a restore from backup.
-- A 5-step test of the real desktop shell: start-up, PDF export, single-instance lock, backup on
-  close, data kept across restarts.
-
-The same tests and the installer build run on a Windows machine at GitHub on every push; check the
-**Actions** tab for the result of the latest run.
-
-Not verified by me, and needing a check on your side:
-
-1. **Your Windows PC.** Install it and go through one day's work on trial data.
-2. **Your printers.** A4 and thermal layouts were checked on screen and as PDF, never on paper.
-   Thermal output depends on the printer driver's paper settings.
-3. **GST treatment.** The arithmetic is tested, but this software has not been reviewed or
-   certified for GST compliance. Have your accountant check a printed invoice, the GST rate set on
-   each product, and the GST report.
-4. **A restore drill on the real machine.** After a few days of use, press *Check* on a backup in
-   Settings and confirm the last invoice number and customer dues match.
-
-## For developers
+Requires Node.js 22.13 or newer.
 
 ```bash
 npm install
@@ -113,21 +120,16 @@ npm run build
 npm start
 ```
 
-`npm start` opens the desktop app. To run without the shell, in a browser:
+`npm start` opens the desktop app. To run it in a browser instead (no desktop shell), use
+`npm run serve` and open http://127.0.0.1:3210; data goes to `.data/`.
 
-```bash
-npm run serve
-```
-
-then open http://127.0.0.1:3210 (data goes to `.data/`; set `YGPOS_DATA` to change it).
-
-Build the Windows installer on a Windows machine:
+Build the Windows installer (on Windows):
 
 ```bash
 npm run dist
 ```
 
-### Testing
+### Tests
 
 ```bash
 npm run lint
@@ -149,14 +151,38 @@ npm run test:e2e
 npm run test:desktop
 ```
 
-The last two need Playwright (`npm install --no-save playwright` and `npx playwright install chromium`)
-and a build. On Linux without a display, run the desktop test as `xvfb-run -a npm run test:desktop`.
-Node.js 22.13 or newer is required (the built-in SQLite module is used; there are no native add-ons).
+`npm test` runs the core tests (business rules, database, backup and restore). The last two need
+a build and Playwright (`npm install --no-save playwright` then `npx playwright install chromium`).
+On Linux without a display, run the desktop test as `xvfb-run -a npm run test:desktop`.
 
-## Documentation
+### How it is built
 
-- [ARCHITECTURE.md](ARCHITECTURE.md) — how it is built, safety guarantees, backup and recovery
-- [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md) — tables, units, invariants, migrations
-- [API_DOCUMENTATION.md](API_DOCUMENTATION.md) — the core's methods and permissions
-- [PROJECT_PLAN.md](PROJECT_PLAN.md) — feature checklist, decisions, what is left
-- [CHANGELOG.md](CHANGELOG.md)
+Electron desktop shell · Next.js and React interface, exported as static files · business rules in
+a TypeScript core · SQLite through Node's built-in `node:sqlite` (no native add-ons). Money is
+stored in whole paise and quantities in whole thousandths, so there is no floating-point arithmetic.
+
+| Document | Covers |
+| --- | --- |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | Design, how an invoice is saved safely, roles, printing, backup and recovery |
+| [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md) | Tables, units, rules the database enforces, migrations |
+| [API_DOCUMENTATION.md](API_DOCUMENTATION.md) | Every operation the interface can ask the core to do, and who may do it |
+| [PROJECT_PLAN.md](PROJECT_PLAN.md) | Decisions taken, feature checklist, what is left |
+| [CHANGELOG.md](CHANGELOG.md) | Versions |
+
+```
+desktop/core/   business rules and database      desktop/   Electron shell, request handler
+src/            interface (screens, invoice layouts, shared arithmetic)
+tests/          core tests                       e2e/       browser and desktop-app tests
+archive/        an earlier, retired web version (see below)
+```
+
+### About the `archive/` folder
+
+The project started as a browser app for a retail shop that stored data online (Supabase). It was
+then rebuilt as the offline wholesale desktop app you see here. The first version is kept in
+`archive/web-supabase-v0.1/` for reference only; nothing in it is used, and it is not maintained.
+
+## License
+
+No license has been chosen for this repository yet. Under copyright law that means you may read
+the code here, but you may not copy, modify or redistribute it without the owner's permission.
