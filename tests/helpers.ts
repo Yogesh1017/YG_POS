@@ -60,7 +60,7 @@ export function cup(shop: Shop, over: Record<string, unknown> = {}) {
 }
 export const product = (shop: Shop, over: Record<string, unknown>) => shop.ok<any>(shop.owner, "products.save", { ...PRODUCT, ...over });
 export const customer = (shop: Shop, over: Record<string, unknown> = {}) => shop.ok<any>(shop.owner, "customers.save", { name: "Sharma Kirana", phone: "9876543210", ...over });
-export const supplier = (shop: Shop, over: Record<string, unknown> = {}) => shop.ok<any>(shop.owner, "suppliers.save", { name: "Amul Distributor", ...over });
+export const supplier = (shop: Shop, over: Record<string, unknown> = {}) => shop.ok<any>(shop.owner, "suppliers.save", { name: "Frosty Distributor", ...over });
 export const addStock = (shop: Shop, productId: number, qty: number, over: Record<string, unknown> = {}) =>
   shop.ok(shop.owner, "stock.adjust", { product_id: productId, mode: "add", qty_m: Q(qty), reason: "opening", ...over });
 export const stockOf = (shop: Shop, productId: number): number =>

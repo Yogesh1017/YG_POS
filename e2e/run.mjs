@@ -44,7 +44,13 @@ async function step(name, fn) {
 }
 const expect = (cond, msg) => { if (!cond) throw new Error(msg); };
 const eq = (a, b, msg) => expect(String(a) === String(b), `${msg}: expected ${b}, got ${a}`);
-const shot = async (name) => { if (shots) await page.screenshot({ path: path.join(shots, `${name}.png`) }); };
+// Pop-up messages are hidden while capturing so they do not cover the screen being shown.
+const shot = async (name) => {
+  if (!shots) return;
+  const style = await page.addStyleTag({ content: "[data-sonner-toaster] { display: none !important; }" });
+  await page.screenshot({ path: path.join(shots, `${name}.png`) });
+  await style.evaluate((el) => el.remove());
+};
 
 await startServer();
 const browser = await chromium.launch();
@@ -125,14 +131,14 @@ await step("settings: owner adds a manager and a cashier", async () => {
 await step("products: brand, then a product packed 10 pcs to a box and 12 boxes to a carton, with a quantity price and opening stock", async () => {
   await nav("Products");
   await page.getByRole("button", { name: "Brands" }).click();
-  await L("New brand name", dialog()).fill("Amul");
+  await L("New brand name", dialog()).fill("Frosty");
   await dialog().getByRole("button", { name: "Add" }).click();
-  await dialog().getByText("Amul").waitFor();
+  await dialog().getByText("Frosty").waitFor();
   await dialog().getByLabel("Close").click();
   await page.getByRole("button", { name: "Add product" }).click();
   const d = dialog();
   await L("Product name", d).fill("Vanilla Cup");
-  await L("Brand", d).selectOption({ label: "Amul" });
+  await L("Brand", d).selectOption({ label: "Frosty" });
   await L("Pack size", d).fill("100 ml");
   await L("HSN code", d).fill("2105");
   await L("GST %", d).fill("18");
@@ -176,7 +182,7 @@ await step("customers and suppliers: add a shop with a credit limit and opening 
   await toast("Saved");
   await nav("Suppliers");
   await page.getByRole("button", { name: "Add supplier" }).click();
-  await L("Supplier name", dialog()).fill("Amul Distributor");
+  await L("Supplier name", dialog()).fill("Frosty Distributor");
   await dialog().getByRole("button", { name: "Save" }).click();
   await toast("Saved");
   eq(one("select balance from customers"), 50000, "opening balance");
@@ -186,7 +192,7 @@ await step("purchases: a supplier bill adds stock by the carton with batch and e
   await nav("Purchases");
   await page.getByRole("button", { name: "New purchase" }).click();
   const d = dialog();
-  await L("Supplier", d).selectOption({ label: "Amul Distributor" });
+  await L("Supplier", d).selectOption({ label: "Frosty Distributor" });
   await L("Supplier's bill no", d).fill("AM/441");
   await L("Search products", d).fill("vanilla");
   await page.keyboard.press("Enter");
@@ -231,7 +237,7 @@ await step("invoice printing: A4 tax invoice and thermal receipt carry the right
   await page.waitForFunction(() => window.__prints === 1);
   await page.emulateMedia({ media: "print" });
   const a4 = await page.locator("#print-root").innerText();
-  for (const t of ["TAX INVOICE", "Gupta Ice Cream Agency", "27AAPFU0939F1ZV", firstInvoice, "Sharma Kirana", "Amul Vanilla Cup 100 ml", "2 Carton", "2105", "CGST", "194.40", "2,549.00", "Rupees Two Thousand Five Hundred Forty Nine Only", "Balance due"]) expect(a4.includes(t), `A4 invoice should contain "${t}"`);
+  for (const t of ["TAX INVOICE", "Gupta Ice Cream Agency", "27AAPFU0939F1ZV", firstInvoice, "Sharma Kirana", "Frosty Vanilla Cup 100 ml", "2 Carton", "2105", "CGST", "194.40", "2,549.00", "Rupees Two Thousand Five Hundred Forty Nine Only", "Balance due"]) expect(a4.includes(t), `A4 invoice should contain "${t}"`);
   await shot("invoice-a4-print");
   await page.emulateMedia({ media: null });
   await page.evaluate(() => window.dispatchEvent(new Event("afterprint")));
@@ -374,8 +380,8 @@ await step("returns: part of a carton comes back melted — credit note, balance
   await page.getByRole("cell", { name: firstInvoice, exact: true }).click();
   await dialog().getByRole("button", { name: "Return goods" }).click();
   const stockBefore = Number(one("select sum(qty_m) from stock_batches"));
-  await dialog().getByLabel("Quantity of Amul Vanilla Cup 100 ml returned").fill("24");
-  await dialog().getByLabel("Condition of Amul Vanilla Cup 100 ml").selectOption("melted");
+  await dialog().getByLabel("Quantity of Frosty Vanilla Cup 100 ml returned").fill("24");
+  await dialog().getByLabel("Condition of Frosty Vanilla Cup 100 ml").selectOption("melted");
   await dialog().getByLabel("Reason").fill("Shop freezer failed");
   await dialog().getByRole("button", { name: "Record return" }).click();
   await toast(/Credit note CN\/\d\d-\d\d\/1 recorded/);

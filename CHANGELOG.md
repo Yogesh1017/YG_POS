@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+- GSTIN boxes drop spaces and pasted characters and show a 15-character count.
+- README rewritten for visitors, with screenshots (demo data only).
+
 ## 1.0.0 — 2026-11-15
 
 Rebuilt as an offline Windows desktop application for a wholesale ice cream business.
@@ -26,7 +32,6 @@ Rebuilt as an offline Windows desktop application for a wholesale ice cream busi
 - Windows installer built by GitHub Actions.
 
 ### Known limitations
-- Not yet run on the target Windows PC or printed on real printers.
 - The installer is not code-signed (Windows shows an "unknown publisher" warning).
 - See README "Not included".
 

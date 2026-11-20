@@ -166,7 +166,7 @@ describe("reports", () => {
     expect(shop.ok<any[]>(shop.owner, "reports.customers", { from: TODAY, to: TODAY }).map((x) => x.name)).toEqual(["Sharma Kirana", "Cash sales"]);
     const out = shop.ok<any>(shop.owner, "reports.outstanding");
     expect(out.customers[0]).toMatchObject({ name: "Sharma Kirana", unpaid_invoices: 1 });
-    expect(out.suppliers[0]).toMatchObject({ name: "Amul Distributor", balance: R(9912) });
+    expect(out.suppliers[0]).toMatchObject({ name: "Frosty Distributor", balance: R(9912) });
     expect(shop.ok<any>(shop.owner, "reports.gst", { from: TODAY, to: TODAY })).toMatchObject({ by_rate: [{ tax_rate_bp: 1800, taxable: R(4510) }], input_tax: R(1512) });
     expect(shop.ok<any>(shop.owner, "reports.stock").stock_value).toBe(R((1200 - 500 + 120 - 10) * 7));
     const dash = shop.ok<any>(shop.cashier, "reports.dashboard");
